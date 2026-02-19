@@ -3,26 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>콩콩춘식 - 이중 캔버스 시스템</title>
+  <title>콩콩춘식 - 착지 모션 강화</title>
   <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     body{margin:0;background:#f0f0f0;overflow:hidden;font-family:'Pretendard',system-ui;display:flex;justify-content:center;align-items:center;height:100vh;touch-action:none}
     #game-container{position:relative;width:480px;height:800px;background:linear-gradient(#A1C4FD,#C2E9FB);overflow:hidden}
-    
     #bgCanvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1}
 
-    /* 필승 비법 업그레이드: 캔버스 자체를 두 개로 분리하여 겹침 */
+    /* 필승 비법: 캔버스 분리 */
     .chun-layer {
       position: absolute;
       z-index: 2;
       width: 86px !important;
       height: 138px !important;
       pointer-events: none;
-      display: none; /* 기본은 숨김 */
+      display: none;
     }
-
-    #hud{position:absolute;top:16px;left:16px;z-index:5;background:rgba(255,255,255,.92);padding:10px 14px;border-radius:999px;font-weight:1000;color:#111827;}
     .overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,0.6);color:#fff;text-align:center;padding:24px}
     .btn{margin-top:18px;padding:14px 40px;font-size:18px;font-weight:1000;background:#FEE500;color:#111827;border:0;border-radius:999px;cursor:pointer}
     .hidden{display:none!important}
@@ -30,9 +27,7 @@
 </head>
 <body>
 <div id="game-container">
-  <div id="hud">금리: <span id="rate">2.0</span>%</div>
   <canvas id="bgCanvas"></canvas>
-  
   <canvas id="landCanvas" class="chun-layer"></canvas>
   <canvas id="airCanvas" class="chun-layer"></canvas>
 
@@ -45,17 +40,16 @@
 
 <script>
 (() => {
-  const bgCanvas = document.getElementById('bgCanvas'), bgCtx = bgCanvas.getContext('2d');
+  const bgCanvas = document.getElementById('bgCanvas');
   const landCanvas = document.getElementById('landCanvas'), airCanvas = document.getElementById('airCanvas');
   const btnStart = document.getElementById('btnStart'), status = document.getElementById('status');
 
-  function resize(){ bgCanvas.width = 480; bgCanvas.height = 800; }
-  resize();
+  bgCanvas.width = 480; bgCanvas.height = 800;
 
   let landRive, airRive, activeCanvas = null;
   let landReady = false, airReady = false;
 
-  // 1. 각각의 캔버스에 독립적으로 로드하여 충돌 방지
+  [cite_start]// 1. 캐릭터 로드 [cite: 1090, 1378]
   function init() {
     landRive = new rive.Rive({
       src: 'kongsik_ingame_land.riv',
@@ -65,7 +59,6 @@
       autoplay: false,
       onLoad: () => { landReady = true; checkReady(); }
     });
-
     airRive = new rive.Rive({
       src: 'kongsik_ingame_air.riv',
       canvas: airCanvas,
@@ -86,32 +79,46 @@
 
   let jumpPower = -15, gravity = 0.6; 
   let p = { x: 197, y: 600, vy: jumpPower }, isRunning = false, lastDir = 1;
+  
+  // --- 핵심: 착지 모션 유지 시간 설정 ---
+  let landAnimationTimer = 0; // 착지 모션이 남은 시간(ms)
+  const LAND_DURATION = 200;  // 200ms(0.2초) 동안 착지 모션 강제 유지
 
-  // 시선 반전 조작 (이동 반대 방향)
   window.addEventListener('keydown', e => { 
     if(e.code==='ArrowLeft'){ lastDir=1; } 
     if(e.code==='ArrowRight'){ lastDir=-1; } 
   });
 
-  function loop() {
+  let lastTimestamp = 0;
+  function loop(timestamp) {
     if(!isRunning) return;
+    const dt = timestamp - lastTimestamp;
+    lastTimestamp = timestamp;
+
     p.vy += gravity; p.y += p.vy;
 
-    // 바닥/발판 충돌 판정
+    // 바닥/발판 충돌 시
     if (p.y > 600) {
       p.y = 600; p.vy = jumpPower;
-      // [착지 모션 쇼타임]
+      
+      // 착지 타이머 가동 시작
+      landAnimationTimer = LAND_DURATION; 
+      
       showCanvas(landCanvas);
       landRive.scrub("State Machine 1", 0);
       landRive.play("State Machine 1");
     } 
-    else if (p.vy < 0 && p.y < 580) {
-      // [공중 모션 쇼타임]
+
+    // 타이머가 작동 중이면 시간 차감
+    if (landAnimationTimer > 0) {
+      landAnimationTimer -= dt;
+    } 
+    // 타이머 종료 후 상승 중일 때만 공중 모션으로 전환
+    else if (p.vy < 0) {
       showCanvas(airCanvas);
       airRive.play("State Machine 1");
     }
 
-    // 현재 활성화된 캔버스만 위치 이동 및 노출
     if(activeCanvas) {
       activeCanvas.style.left = (p.x - 43) + 'px';
       activeCanvas.style.top = (p.y - 69) + 'px';
@@ -122,6 +129,7 @@
   }
 
   function showCanvas(target) {
+    if (activeCanvas === target) return;
     landCanvas.style.display = 'none';
     airCanvas.style.display = 'none';
     target.style.display = 'block';
@@ -133,7 +141,8 @@
     isRunning = true;
     landRive.resizeDrawingSurfaceToCanvas();
     airRive.resizeDrawingSurfaceToCanvas();
-    loop();
+    lastTimestamp = performance.now();
+    loop(lastTimestamp);
   };
 })();
 </script>
