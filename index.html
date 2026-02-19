@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 쥐돌이 인공지능 패치</title>
+    <title>콩콩춘식 - 밸런스 패치</title>
     <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -17,7 +18,6 @@
         }
         canvas { width: 100%; height: 100%; }
         .platform { position: absolute; background-size: 100% 100%; z-index: 5; }
-        /* 쥐돌이 크기 1.2배 확대 (72x54) */
         .mouse-enemy { position: absolute; width: 72px; height: 54px; background-size: contain; background-repeat: no-repeat; z-index: 6; }
         .controller {
             position: absolute; width: 80px; height: 80px; background-size: contain;
@@ -95,7 +95,8 @@ function createPlatformData(yPos) {
         hasMouse: canHaveMouse, mouseX: Math.random() * (width - 72), mouseDir: Math.random() > 0.5 ? 1 : -1,
         mouseSpeed: 0.7 + Math.random() * 0.5, 
         mouseWaitTimer: 0,
-        type: (rand > 0.9) ? 'h' : 'normal', speed: 1.5, isBroken: false
+        type: (rand > 0.9) ? 'h' : 'normal', speed: 1.5, isBroken: false,
+        isTouched: false // 밟았는지 여부 체크
     };
 }
 
@@ -109,7 +110,7 @@ function initPlatforms() {
         lastY -= (160 + Math.random() * 40);
         platforms.push(createPlatformData(lastY));
     }
-    platforms.push({ x: 393/2-69, y: 752, w: 138, h: 22, img: 'block_1.png', isBreakable: false, durability: 999 });
+    platforms.push({ x: 393/2-69, y: 752, w: 138, h: 22, img: 'block_1.png', isBreakable: false, durability: 999, isTouched: false });
 }
 
 loadRive('kongsik_ingame_air.riv');
@@ -132,29 +133,19 @@ function update() {
         if (p.type === 'h') { p.x += p.speed; if (p.x <= 0 || p.x + p.w >= 393) p.speed *= -1; }
         
         if (p.hasMouse) {
-            // ★ 랜덤 이동 로직
-            if (p.mouseWaitTimer > 0) {
-                p.mouseWaitTimer--;
-            } else {
+            if (p.mouseWaitTimer > 0) { p.mouseWaitTimer--; } 
+            else {
                 p.mouseX += p.mouseDir * p.mouseSpeed;
-                
-                // 1. 끝점 도달 시 랜덤 대기 (30~120프레임 = 0.5~2초)
                 if (p.mouseX <= 0 || p.mouseX + 72 >= p.w) {
                     p.mouseDir *= -1;
-                    p.mouseX = Math.max(0, Math.min(p.mouseX, p.w - 72));
                     p.mouseWaitTimer = 30 + Math.floor(Math.random() * 90); 
-                }
-                // 2. 이동 중 랜덤 정지 확률 (약 0.5%)
-                else if (Math.random() < 0.005) {
+                } else if (Math.random() < 0.005) {
                     p.mouseWaitTimer = 20 + Math.floor(Math.random() * 40); 
                 }
             }
-            
             let mx = p.x + p.mouseX, my = p.y - 35;
-            // 아슬아슬한 판정 범위 적용 (중심부만)
             if (charLeft + 35 > mx + 20 && charLeft + 15 < mx + 52 && charFootY > my && charFootY < my + 45) {
-                velocityY = -10; 
-                posX += (posX > (mx - p.x) ? 40 : -40); 
+                velocityY = -10; posX += (posX > (mx - p.x) ? 40 : -40); 
             }
         }
 
@@ -162,6 +153,7 @@ function update() {
             loadRive('kongsik_ingame_land.riv'); 
             velocityY = PHYSICS.jumpPower; currentY = p.y - 752; 
             motionTimer = PHYSICS.motionHold; 
+            p.isTouched = true; // 밟음 처리
             if (p.isBreakable) { p.durability--; if (p.durability <= 0) p.isBroken = true; }
         }
     });
@@ -172,7 +164,9 @@ function update() {
     }
 
     if (currentY < -250) {
-        let diff = -250 - currentY; currentY = -250; score += Math.floor(diff); scoreEl.innerText = score + "m";
+        let diff = -250 - currentY; currentY = -250; score += diff; 
+        // ★ 거리 표시 1/100로 축소
+        scoreEl.innerText = Math.floor(score * 0.01) + "m";
         bgScrollY += diff; document.getElementById('game-stage').style.backgroundPositionY = (bgScrollY % 852) + 'px';
         platforms.forEach(p => {
             p.y += diff;
@@ -189,12 +183,14 @@ function update() {
     platforms.forEach(p => {
         if (p.isBroken) return;
         const d = document.createElement('div');
-        d.className = 'platform'; d.style.cssText = `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:22px;background-image:url('${p.img}')`;
+        d.className = 'platform'; 
+        // ★ 나무 발판을 밟으면 투명도 60% 적용
+        let opacity = (p.isBreakable && p.isTouched) ? 0.6 : 1.0;
+        d.style.cssText = `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:22px;background-image:url('${p.img}'); opacity:${opacity};`;
         stage.appendChild(d);
         if (p.hasMouse) {
             const m = document.createElement('div');
             m.className = 'mouse-enemy';
-            // 멈춰 있을 때는 mouse2.png 사용
             const mouseImg = p.mouseWaitTimer > 0 ? 'mouse2.png' : `mouse_walk${mouseAnimFrame < 10 ? 1 : 2}.png`;
             m.style.cssText = `left:${p.x + p.mouseX}px;top:${p.y - 52}px;background-image:url('${mouseImg}'); transform: scaleX(${p.mouseDir})`;
             stage.appendChild(m);
