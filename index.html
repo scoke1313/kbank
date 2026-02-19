@@ -40,12 +40,16 @@ const PHYSICS = {
     gravity: 0.9,       // 중력 (클수록 빨리 떨어짐)
     jumpPower: -18,     // 도약 속도 (클수록 높이 뜀)
     groundY: 0,         // 바닥 기준
+    moveSpeed: 6        // 좌우 이동 속도 추가
 };
 
 let currentY = 0;
 let velocityY = 0;
-let isJumping = true; // 시작부터 점프 상태로 설정
+let posX = 0;           // 좌우 위치 변수
+let isJumping = true;   // 자동 점프 활성화
 let riveInstance;
+let keys = {};          // 키 입력 상태 저장
+let currentScale = 1;   // 좌우 반전 상태 (1: 오른쪽, -1: 왼쪽)
 
 // Rive 초기화 함수 (파일 교체용)
 function loadRive(fileName) {
@@ -66,36 +70,43 @@ function loadRive(fileName) {
 loadRive('kongsik_ingame_air.riv');
 
 function update() {
+    // 1. 좌우 이동 로직
+    if (keys['ArrowLeft']) {
+        posX -= PHYSICS.moveSpeed;
+        currentScale = -1; // 왼쪽 반전
+    }
+    if (keys['ArrowRight']) {
+        posX += PHYSICS.moveSpeed;
+        currentScale = 1;  // 오른쪽 정방향
+    }
+
+    // 2. 수직 점프 로직
     if (isJumping) {
         velocityY += PHYSICS.gravity;
         currentY += velocityY;
 
-        // 바닥 도착 판정
+        // 바닥 도착 판정 (자동 재점프)
         if (currentY >= PHYSICS.groundY) {
             currentY = PHYSICS.groundY;
-            
-            // [수정] 멈추지 않고 즉시 PHYSICS.jumpPower만큼 다시 속도를 부여 (자동 점프)
-            velocityY = PHYSICS.jumpPower;
-            isJumping = true; 
-            
-            // 바닥에 닿는 순간 착지 모션을 아주 잠깐 보여주고 싶다면 여기서 교체 루틴을 짜겠지만,
-            // 일단 원본 흐름대로 튕겨 나가는 시점에 air 모션을 다시 확실히 로드하게 두었습니다.
+            velocityY = PHYSICS.jumpPower; 
             loadRive('kongsik_ingame_air.riv');
         }
 
-        // 캐릭터 위치(Y) 업데이트
-        document.getElementById('canvas-container').style.transform = `translateY(${currentY}px)`;
+        // 캐릭터 위치(X, Y) 및 반전 업데이트
+        // 원본의 translateY 구조를 유지하면서 translateX와 scaleX를 병합
+        document.getElementById('canvas-container').style.transform = 
+            `translate(${posX}px, ${currentY}px) scaleX(${currentScale})`;
     }
     requestAnimationFrame(update);
 }
 
-// 입력 감지 (이제 스페이스 없이도 update에서 자동 실행되지만 원본 구조상 유지)
+// 입력 감지 (좌우 조작용)
 window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && !isJumping) {
-        isJumping = true;
-        velocityY = PHYSICS.jumpPower;
-        loadRive('kongsik_ingame_air.riv');
-    }
+    keys[e.code] = true;
+});
+
+window.addEventListener('keyup', (e) => {
+    keys[e.code] = false;
 });
 
 update();
