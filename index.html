@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 나무 부서지는 이펙트 추가본</title>
+    <title>콩콩춘식 - 쥐돌이 추락 완벽 보정</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
@@ -28,7 +28,6 @@
         .mouse-enemy { position: absolute; width: 72px; height: 54px; background-size: contain; background-repeat: no-repeat; z-index: 6; }
         .game-item { position: absolute; width: 50px; height: 50px; background-size: contain; z-index: 7; }
         
-        /* 파편 이펙트 스타일 */
         .shard { position: absolute; width: 15px; height: 8px; background-image: url('wood_2.png'); background-size: cover; z-index: 4; pointer-events: none; }
 
         #result-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 3000; display: none; flex-direction: column; align-items: center; justify-content: center; }
@@ -81,18 +80,9 @@ function loadRive(f) {
 window.addEventListener('keydown', (e) => { keys[e.code] = true; });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-// 파편 생성 함수
 function createShards(x, y, w) {
     for (let i = 0; i < 5; i++) {
-        shards.push({
-            x: x + (Math.random() * w),
-            y: y,
-            vx: (Math.random() - 0.5) * 10,
-            vy: (Math.random() - 0.5) * 10 - 5,
-            rot: Math.random() * 360,
-            rv: (Math.random() - 0.5) * 20,
-            life: 1.0
-        });
+        shards.push({ x: x + (Math.random() * w), y: y, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10 - 5, rot: Math.random() * 360, rv: (Math.random() - 0.5) * 20, life: 1.0 });
     }
 }
 
@@ -120,36 +110,33 @@ function update() {
     
     const charLeft = 196 + posX - 25, charFootY = 752 + currentY;
 
-    // 파편 물리 업데이트
-    shards.forEach((s, i) => {
-        s.x += s.vx; s.y += s.vy; s.vy += 0.5; s.rot += s.rv; s.life -= 0.02;
-        if (s.life <= 0) shards.splice(i, 1);
-    });
+    shards.forEach((s, i) => { s.x += s.vx; s.y += s.vy; s.vy += 0.5; s.rot += s.rv; s.life -= 0.02; if (s.life <= 0) shards.splice(i, 1); });
 
     platforms.forEach(p => {
         if (p.hasMouse && !p.isBroken) {
             p.mouseX += p.mouseDir * 1.5; if (p.mouseX <= 0 || p.mouseX + 72 >= p.w) p.mouseDir *= -1;
             let mx = p.x + p.mouseX, my = p.y - 35;
-            if (charLeft + 30 > mx + 25 && charLeft + 20 < mx + 45 && charFootY > my && charFootY < my + 20) { 
+            if (charLeft + 30 > mx + 30 && charLeft + 20 < mx + 40 && charFootY > my && charFootY < my + 20) { 
                 velocityY = -12; posX += (posX > (mx - p.x) ? 50 : -50); 
             }
         }
         if (!p.isBroken) {
             if (velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) { 
-                velocityY = PHYSICS.jumpPower; currentY = p.y - 752; 
-                if (p.isBreakable) { 
-                    createShards(p.x, p.y, p.w); // 파편 생성 이펙트 실행
-                    p.isBroken = true; 
-                }
+                velocityY = PHYSICS.jumpPower; currentY = p.y - 752; if (p.isBreakable) { createShards(p.x, p.y, p.w); p.isBroken = true; }
             }
-            // 아이템 처리 생략...
         }
     });
 
     if (currentY < -250) { 
         let d = -250 - currentY; currentY = -250; score += d; 
         document.getElementById('score-board').innerText = Math.floor(score * 0.01) + "m";
-        platforms.forEach(p => { p.y += d; if (p.y > 852) Object.assign(p, createPlatformData(Math.min(...platforms.map(pl => pl.y)) - (120 + Math.random() * 70))); }); 
+        platforms.forEach(p => { 
+            p.y += d; 
+            if (p.y > 852) {
+                // 발판이 바닥으로 내려가 재생성될 때, 해당 발판의 쥐돌이 상태를 완전히 초기화(추락 처리)
+                Object.assign(p, createPlatformData(Math.min(...platforms.map(pl => pl.y)) - (120 + Math.random() * 70)));
+            }
+        }); 
         shards.forEach(s => s.y += d);
     }
     if (charFootY > 1050) { isGameRunning = false; document.getElementById('res-total-rate').innerText = (Math.floor(score * 0.01) * 0.01).toFixed(2) + "%"; document.getElementById('result-screen').style.display = 'flex'; }
@@ -158,21 +145,15 @@ function update() {
     document.querySelectorAll('.platform, .mouse-enemy, .shard').forEach(el => el.remove());
     
     shards.forEach(s => {
-        const sd = document.createElement('div'); sd.className = 'shard';
-        sd.style.cssText = `left:${s.x}px;top:${s.y}px;transform:rotate(${s.rot}deg);opacity:${s.life};`;
-        document.getElementById('game-stage').appendChild(sd);
+        const sd = document.createElement('div'); sd.className = 'shard'; sd.style.cssText = `left:${s.x}px;top:${s.y}px;transform:rotate(${s.rot}deg);opacity:${s.life};`; document.getElementById('game-stage').appendChild(sd);
     });
 
     platforms.forEach(p => {
         if (!p.isBroken) {
-            const d = document.createElement('div'); d.className = 'platform';
-            d.style.cssText = `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:22px;background-image:url('${p.img}');`;
-            document.getElementById('game-stage').appendChild(d);
-        }
-        if (p.hasMouse && !p.isBroken) {
-            const m = document.createElement('div'); m.className = 'mouse-enemy';
-            m.style.cssText = `left:${p.x + p.mouseX}px;top:${p.y - 52}px;background-image:url('mouse_walk1.png'); transform: scaleX(${p.mouseDir})`;
-            document.getElementById('game-stage').appendChild(m);
+            const d = document.createElement('div'); d.className = 'platform'; d.style.cssText = `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:22px;background-image:url('${p.img}');`; document.getElementById('game-stage').appendChild(d);
+            if (p.hasMouse) {
+                const m = document.createElement('div'); m.className = 'mouse-enemy'; m.style.cssText = `left:${p.x + p.mouseX}px;top:${p.y - 52}px;background-image:url('mouse_walk${mouseAnimFrame < 10 ? 1 : 2}.png'); transform: scaleX(${p.mouseDir})`; document.getElementById('game-stage').appendChild(m);
+            }
         }
     });
     requestAnimationFrame(update);
