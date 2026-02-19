@@ -1,64 +1,104 @@
-// 1. 상태 변수 설정
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>춘식 점프 물리 로직</title>
+    <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
+    <style>
+        body { margin: 0; background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #game-stage { position: relative; width: 600px; height: 800px; background: #f7d300; border-radius: 20px; overflow: hidden; }
+        canvas { width: 100%; height: 100%; }
+        .debug-panel { position: absolute; top: 10px; left: 10px; color: #333; font-family: monospace; background: rgba(255,255,255,0.7); padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div id="game-stage">
+    <div class="debug-panel" id="debug">Speed: 0 | Jumping: false</div>
+    <canvas id="canvas"></canvas>
+</div>
+
+<script>
+// --- 1. 점프 물리 상수 (이 수치로 체감 조절) ---
+const PHYSICS = {
+    gravity: 0.9,       // 중력 (클수록 빨리 떨어짐)
+    jumpPower: -18,     // 도약 속도 (클수록 높이 뜀)
+    groundY: 550,       // 바닥 높이
+    airDrag: 0.98       // 정점 부근 저항 (체공 시간 결정)
+};
+
+let chunsikY = PHYSICS.groundY;
 let velocityY = 0;
-let gravity = 0.8;
-let jumpPower = -15;
 let isJumping = false;
-let groundY = 500; // 바닥 높이
+let currentRive; // 현재 활성화된 Rive 객체
 
-// 2. Rive 애니메이션 인스턴스 (공중/착지 두 파일 로드 가정)
-let riveAir, riveLand;
-
-// 점프 함수
-function performJump() {
-    if (isJumping) return; // 이미 점프 중이면 무시
-
-    isJumping = true;
-    velocityY = jumpPower;
-
-    // '공중' 애니메이션 재생
-    playAnimation(riveAir, "jumping_loop");
-    console.log("춘식 도약!");
+// --- 2. Rive 인스턴스 초기 로드 (Air 모션 우선) ---
+function loadChunsik(fileName) {
+    if (currentRive) currentRive.cleanup(); // 기존 인스턴스 제거
+    
+    currentRive = new rive.Rive({
+        src: fileName, // kongsik_ingame_air.riv 또는 land.riv
+        canvas: document.getElementById('canvas'),
+        autoplay: true,
+        stateMachines: 'State Machine 1',
+        onLoad: () => {
+            currentRive.resizeDrawingSurfaceToCanvas();
+        }
+    });
 }
 
-// 프레임 업데이트 로직 (Game Loop)
+// 초기 상태: 공중/대기 모션 로드
+loadChunsik('kongsik_ingame_air.riv');
+
+// --- 3. 핵심 업데이트 루프 ---
 function update() {
     if (isJumping) {
-        // 중력 적용
-        velocityY += gravity;
-        chunsik.y += velocityY;
-
-        // 정점 부근에서 애니메이션 속도 조절 (체공 느낌)
+        // 속도 계산
+        velocityY += PHYSICS.gravity;
+        
+        // 정점에서 살짝 머무는 효과 (물리적 체공 시간)
         if (Math.abs(velocityY) < 2) {
-            riveAir.setNumberStateAt("Speed", 0.5); 
+            velocityY *= PHYSICS.airDrag;
         }
 
-        // 바닥 착지 판정
-        if (chunsik.y >= groundY) {
-            chunsik.y = groundY;
+        chunsikY += velocityY;
+
+        // 착지 순간 판정
+        if (chunsikY >= PHYSICS.groundY) {
+            chunsikY = PHYSICS.groundY;
+            velocityY = 0;
             isJumping = false;
-            triggerLanding(); // 탄성 착지 실행
+            
+            // [착지] 모션으로 즉시 교체
+            loadChunsik('kongsik_ingame_land.riv');
+            console.log("착지 속도에 맞춰 Land 모션 실행");
         }
     }
+
+    // 디버그 표시 및 위치 업데이트
+    document.getElementById('debug').innerText = `VY: ${velocityY.toFixed(2)} | Y: ${Math.round(chunsikY)}`;
+    
+    // 캔버스 내 캐릭터 위치 직접 제어 (속도감 반영)
+    const canvasElement = document.getElementById('canvas');
+    canvasElement.style.transform = `translateY(${chunsikY - PHYSICS.groundY}px)`;
+
+    requestAnimationFrame(update);
 }
 
-// 3. 탄성 착지 로직 (Elastic Landing)
-function triggerLanding() {
-    // 공중 애니메이션 정지
-    riveAir.stop();
+// --- 4. 입력 제어 ---
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && !isJumping) {
+        isJumping = true;
+        velocityY = PHYSICS.jumpPower;
+        
+        // [점프] 모션으로 즉시 교체
+        loadChunsik('kongsik_ingame_air.riv');
+    }
+});
 
-    // '착지' 애니메이션 재생
-    // 이 파일 안에는 춘식이가 찌그러졌다가 펴지는(Squash & Stretch) 모션이 포함되어야 합니다.
-    playAnimation(riveLand, "land_elastic");
+// 게임 루프 시작
+update();
+</script>
 
-    // 착지 충격에 따른 화면 흔들림(Shake) 효과 추가 (디테일)
-    applyScreenShake(velocityY * 0.5); 
-
-    console.log("춘식 착지! 탄성 적용됨.");
-}
-
-// Rive 제어 유틸리티
-function playAnimation(instance, name) {
-    const inputs = instance.stateMachineInputs('State Machine 1');
-    const trigger = inputs.find(i => i.name === name);
-    if (trigger) trigger.fire();
-}
+</body>
+</html>
