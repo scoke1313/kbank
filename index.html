@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 상단 UI 폰트 확대 패치</title>
+    <title>콩콩춘식 - 모션 복구 및 최종 UI 패치</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
@@ -16,51 +16,42 @@
             background-size: 100% auto; background-color: #FFFDF5; overflow: hidden; 
         }
 
-        /* --- 닫기 버튼 (16px, 4px 마진) --- */
+        /* 닫기 버튼 배치 */
         #btn-close-wrap {
             position: absolute; top: 16px; left: 4px; width: 44px; height: 44px; z-index: 1001; cursor: pointer;
         }
         #btn-close-wrap img { width: 100%; height: 100%; display: block; object-fit: contain; }
 
-        /* --- 상단 UI 레이아웃 컨테이너 (75px 위치) --- */
+        /* 상단 UI 레이아웃 컨테이너 */
         .header-ui-container {
             position: absolute; top: 75px; left: 0; width: 100%;
             display: flex; justify-content: space-between; align-items: center;
             padding: 0 20px; box-sizing: border-box; z-index: 1000;
         }
 
-        /* 좌측 점수 UI: 요청하신 38px 적용 */
+        /* 좌측 점수 UI (38px, #2D1D1C) */
         #score-board {
             font-family: 'Poetsen One', sans-serif;
-            font-size: 38px; 
-            color: #2D1D1C;
-            font-weight: normal;
-            line-height: 1;
+            font-size: 38px; color: #2D1D1C; font-weight: normal; line-height: 1;
         }
 
-        /* 오른쪽 캡슐 UI (130x46 고정) */
+        /* 우측 캡슐 UI (130x46, #F0E0C6) */
         .rate-capsule {
             display: flex; align-items: center; justify-content: center;
-            background: #FFFFFF; 
-            border: 2px solid #F0E0C6; 
-            border-radius: 30px; 
-            width: 130px; height: 46px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-            box-sizing: border-box;
+            background: #FFFFFF; border: 2px solid #F0E0C6;
+            border-radius: 30px; width: 130px; height: 46px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03); box-sizing: border-box;
         }
 
         .ui-icon { width: 25px; height: 25px; margin-right: 6px; object-fit: contain; }
         
-        /* 우측 폰트: 요청하신 20px 적용 */
+        /* 우측 폰트 (20px, #2D1D1C) */
         #rate-board { 
-            font-size: 20px; 
-            font-weight: 800; 
-            color: #2D1D1C; 
-            font-family: 'Arial', sans-serif; 
-            line-height: 1;
+            font-size: 20px; font-weight: 800; color: #2D1D1C; 
+            font-family: 'Arial', sans-serif; line-height: 1;
         }
 
-        /* 게임 요소 설정 */
+        /* 캐릭터 캔버스 설정 */
         #canvas-container {
             position: absolute; width: 86px !important; height: 138px !important;
             bottom: 100px; left: 50%; margin-left: -43px; z-index: 10;
@@ -108,7 +99,6 @@
 </div>
 
 <script>
-// 게임 로직(물리, 발판 생성, 업데이트 등)은 기존 사양 유지
 const PHYSICS = { gravity: 0.81, jumpPower: -18.9, superJumpPower: -45, moveSpeed: 7, motionHold: 10 };
 const PLATFORM_TYPES = { wood: ['wood_1.png', 'wood_2.png', 'wood_3.png'], block: ['block_1.png', 'block_2.png', 'block_3.png'] };
 const SIZES = [138, 98, 58]; 
@@ -116,7 +106,7 @@ const SIZES = [138, 98, 58];
 let currentY = 0, velocityY = 0, posX = 0, score = 0, cloverRate = 0, bgScrollY = 0;
 let isSuperJumping = false;
 let riveInstance, keys = {}, currentScale = 1;
-let platforms = [], particles = [], motionTimer = 0, lastLoadedFile = "";
+let platforms = [], motionTimer = 0, lastLoadedFile = "";
 let mouseAnimFrame = 0;
 
 const btnLeft = document.getElementById('btn-left'), btnRight = document.getElementById('btn-right'), 
@@ -137,11 +127,18 @@ const attachControl = (btn, key) => {
 };
 attachControl(btnLeft, 'ArrowLeft'); attachControl(btnRight, 'ArrowRight');
 
+// --- Rive 모션 복구 함수 ---
 function loadRive(fileName) {
     if (lastLoadedFile === fileName) return;
     lastLoadedFile = fileName;
     if (riveInstance) riveInstance.cleanup();
-    riveInstance = new rive.Rive({ src: fileName, canvas: document.getElementById('canvas'), autoplay: true, stateMachines: 'State Machine 1', onLoad: () => { riveInstance.resizeDrawingSurfaceToCanvas(); } });
+    riveInstance = new rive.Rive({ 
+        src: fileName, 
+        canvas: document.getElementById('canvas'), 
+        autoplay: true, 
+        stateMachines: 'State Machine 1', 
+        onLoad: () => { riveInstance.resizeDrawingSurfaceToCanvas(); } 
+    });
 }
 
 function createPlatformData(yPos) {
@@ -149,24 +146,21 @@ function createPlatformData(yPos) {
     const rand = Math.random();
     let sizeIdx = distM < 30 ? 0 : Math.floor(rand * SIZES.length);
     const width = SIZES[sizeIdx];
-    let woodProb = 0.2 + (Math.min(distM, 500) / 500) * 0.7;
-    let isBreakable = rand < woodProb;
+    let isBreakable = rand < (0.2 + (Math.min(distM, 500) / 500) * 0.7);
     const typeKey = isBreakable ? 'wood' : 'block';
     let canHaveMouse = (width === 138) && (rand < 0.2); 
     let itemType = null;
     if (!canHaveMouse && rand > 0.85) { itemType = Math.random() > 0.6 ? 'gold' : 'clover'; }
-    let moveProb = distM < 100 ? 0.05 : Math.min(0.4, 0.05 + (0.35 * ((distM - 100) / 400)));
-    let moveType = (rand < moveProb) ? (distM < 100 ? 'h' : (Math.random() > 0.5 ? 'h' : 'v')) : 'normal';
+    let moveType = (rand < (distM < 100 ? 0.05 : Math.min(0.4, 0.05 + (0.35 * ((distM - 100) / 400))))) ? (Math.random() > 0.5 ? 'h' : 'v') : 'normal';
     return { x: Math.random() * (393 - width), y: yPos, baseY: yPos, w: width, h: 22, img: PLATFORM_TYPES[typeKey][sizeIdx], isBreakable: isBreakable, durability: isBreakable ? 1 : 999, hasMouse: canHaveMouse, mouseX: Math.random() * (width - 72), mouseDir: Math.random() > 0.5 ? 1 : -1, mouseSpeed: 0.7 + Math.random() * 0.5, mouseWaitTimer: 0, mouseYOffset: -52, mouseVY: 0, item: itemType, itemCollected: false, type: moveType, speed: 1.5, verticalRange: 40 + Math.random() * 40, vPhase: Math.random() * Math.PI * 2, isBroken: false, isTouched: false };
 }
 
 function initPlatforms() {
-    document.querySelectorAll('.platform, .mouse-enemy, .particle, .game-item, .pickup-effect').forEach(el => el.remove());
+    document.querySelectorAll('.platform, .mouse-enemy, .game-item, .pickup-effect').forEach(el => el.remove());
     score = 0; cloverRate = 0; isSuperJumping = false;
     scoreEl.innerText = "0m"; rateEl.innerText = "0.00%";
     bgScrollY = 0; currentY = 0; velocityY = 0; posX = 0;
     canvasCont.classList.remove('gold-glow');
-    document.getElementById('game-stage').style.backgroundPositionY = '0px';
     platforms = []; 
     let lastY = 752;
     for (let i = 0; i < 6; i++) { lastY -= (100 + Math.random() * 110); platforms.push(createPlatformData(lastY)); }
@@ -183,6 +177,7 @@ function update() {
     velocityY += isSuperJumping ? PHYSICS.gravity * 0.5 : PHYSICS.gravity;
     currentY += velocityY; mouseAnimFrame = (mouseAnimFrame + 1) % 20;
     const charFootY = 752 + currentY, charLeft = 393/2 + posX - 25;
+    
     if (isSuperJumping && velocityY >= 0) { isSuperJumping = false; canvasCont.classList.remove('gold-glow'); }
     
     platforms.forEach(p => {
@@ -210,9 +205,14 @@ function update() {
                 let mx = p.x + p.mouseX, my = p.y - 35;
                 if (charLeft + 35 > mx + 20 && charLeft + 15 < mx + 52 && charFootY > my && charFootY < my + 45) { velocityY = -12; posX += (posX > (mx - p.x) ? 50 : -50); }
             }
-            if (!isSuperJumping && velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) { loadRive('kongsik_ingame_land.riv'); velocityY = PHYSICS.jumpPower; currentY = p.y - 752; motionTimer = PHYSICS.motionHold; p.isTouched = true; if (p.isBreakable) { p.durability--; if (p.durability <= 0) p.isBroken = true; } }
-        } else if (p.hasMouse) { p.mouseVY += 0.6; p.mouseYOffset += p.mouseVY; }
+            if (!isSuperJumping && velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) { 
+                loadRive('kongsik_ingame_land.riv'); velocityY = PHYSICS.jumpPower; currentY = p.y - 752; motionTimer = PHYSICS.motionHold; p.isTouched = true; 
+                if (p.isBreakable) { p.durability--; if (p.durability <= 0) p.isBroken = true; } 
+            }
+        }
     });
+
+    if (motionTimer > 0) { motionTimer--; if (motionTimer === 1) loadRive('kongsik_ingame_air.riv'); }
     if (currentY < -250) {
         let diff = -250 - currentY; currentY = -250; score += diff; scoreEl.innerText = Math.floor(score * 0.01) + "m";
         bgScrollY += diff; document.getElementById('game-stage').style.backgroundPositionY = (bgScrollY % 852) + 'px';
@@ -220,8 +220,9 @@ function update() {
     }
     if (charFootY > 1050) initPlatforms();
     document.getElementById('canvas-container').style.transform = `translate(${Math.floor(posX)}px, ${Math.floor(currentY)}px) scaleX(${currentScale})`;
+    
     const stage = document.getElementById('game-stage');
-    document.querySelectorAll('.platform, .mouse-enemy, .particle, .game-item').forEach(el => el.remove());
+    document.querySelectorAll('.platform, .mouse-enemy, .game-item').forEach(el => el.remove());
     platforms.forEach(p => {
         if (!p.isBroken) {
             const d = document.createElement('div'); d.className = 'platform'; d.style.cssText = `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:22px;background-image:url('${p.img}'); opacity:${(p.isBreakable && p.isTouched) ? 0.6 : 1.0};`;
