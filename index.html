@@ -2,16 +2,16 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 벽돌 10초 안전 패치</title>
+    <title>콩콩춘식 - 10초 무적 롤백 버전</title>
     <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
         #game-stage { 
             position: relative; width: 393px; height: 852px; 
-            background: url('bg_ingame.png') repeat-y, #FFFDF5; 
-            background-size: 100% auto; overflow: hidden; 
+            background-image: url('bg_ingame.png'); background-repeat: repeat-y;
+            background-size: 100% auto; background-color: #FFFDF5; overflow: hidden; 
         }
-        /* 춘식이 절대 비율 유지 */
+        /* 춘식이 절대 비율 유지 (86x138) */
         #canvas-container {
             position: absolute; width: 86px; height: 138px;
             bottom: 100px; left: 50%; margin-left: -43px; z-index: 10;
@@ -42,27 +42,27 @@
 </div>
 
 <script>
-const PHYSICS = { gravity: 0.81, jumpPower: -18.9, moveSpeed: 7, stageWidth: 393, stageHeight: 852, motionHold: 12 };
+const PHYSICS = { gravity: 0.81, jumpPower: -18.9, moveSpeed: 7, stageWidth: 393, stageHeight: 852, motionHold: 12, minGap: 150, maxGap: 190 };
 const PLATFORM_TYPES = { wood: ['wood_1.png', 'wood_2.png', 'wood_3.png'], block: ['block_1.png', 'block_2.png', 'block_3.png'] };
 const SIZES = [138, 98, 58];
 
 let currentY = 0, velocityY = 0, posX = 0, score = 0, bgScrollY = 0;
 let riveInstance, keys = {}, currentScale = 1;
 let platforms = [], motionTimer = 0, lastLoadedFile = "";
-let startTime = Date.now(); 
+let startTime = Date.now(); // 시간 측정용
 
 function createPlatformData(yPos) {
     const sizeIdx = Math.floor(Math.random() * SIZES.length);
     const width = SIZES[sizeIdx];
     const rand = Math.random();
     
-    // ★ 10초 안전 로직: 시작 후 10초간 벽돌(block) 확률 90%
+    // ★ 초반 10초 무적 로직 추가
     const playTime = (Date.now() - startTime) / 1000;
     let isBreakable;
     if (playTime < 10) {
-        isBreakable = rand < 0.1; 
+        isBreakable = rand < 0.1; // 10초간 벽돌 확률 90%
     } else {
-        isBreakable = rand > 0.25; 
+        isBreakable = rand > 0.25; // 평시 난이도
     }
     
     const typeKey = isBreakable ? 'wood' : 'block';
@@ -79,13 +79,13 @@ function createPlatformData(yPos) {
 
 function initPlatforms() {
     score = 0; scoreEl.innerText = "0m"; bgScrollY = 0; platforms = [];
-    startTime = Date.now(); 
+    startTime = Date.now(); // 리셋 시 시간도 리셋
     let lastY = 752;
     for (let i = 0; i < 5; i++) {
-        lastY -= (150 + Math.random() * 40);
+        lastY -= (PHYSICS.minGap + Math.random() * (PHYSICS.maxGap - PHYSICS.minGap));
         platforms.push(createPlatformData(lastY));
     }
-    platforms.push({ x: 127, y: 752, w: 138, h: 22, img: 'block_1.png', isBreakable: false, durability: 999, type: 'normal' });
+    platforms.push({ x: 393/2 - 69, y: 752, w: 138, h: 22, img: 'block_1.png', isBreakable: false, durability: 999, type: 'normal' });
 }
 
 const btnLeft = document.getElementById('btn-left'), btnRight = document.getElementById('btn-right'), scoreEl = document.getElementById('score-board');
@@ -108,7 +108,8 @@ loadRive('kongsik_ingame_air.riv');
 function update() {
     if (keys['ArrowLeft']) { posX -= PHYSICS.moveSpeed; currentScale = -1; }
     if (keys['ArrowRight']) { posX += PHYSICS.moveSpeed; currentScale = 1; }
-    posX = Math.max(-153, Math.min(153, posX));
+    const limit = (393 / 2) - 43;
+    posX = Math.max(-limit, Math.min(limit, posX));
     velocityY += PHYSICS.gravity;
     currentY += velocityY;
 
@@ -125,7 +126,7 @@ function update() {
         loadRive('kongsik_ingame_land.riv');
     }
 
-    const charFootY = 752 + currentY, charLeft = 196 + posX - 25;
+    const charFootY = 752 + currentY, charLeft = (393 / 2) + posX - 25;
     if (velocityY > 0) { 
         platforms.forEach(p => {
             if (!p.isBroken && charLeft + 50 > p.x && charLeft < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) {
@@ -143,7 +144,11 @@ function update() {
         document.getElementById('game-stage').style.backgroundPositionY = Math.floor(bgScrollY) + 'px';
         platforms.forEach(p => {
             p.y += diff; if (p.initialY !== undefined) p.initialY += diff;
-            if (p.y > 852) { Object.assign(p, createPlatformData(Math.min(...platforms.map(pl => pl.y)) - 170)); p.isBroken = false; }
+            if (p.y > 852) {
+                const highestY = Math.min(...platforms.map(pl => pl.y));
+                Object.assign(p, createPlatformData(highestY - (150 + Math.random() * 40)));
+                p.isBroken = false; 
+            }
         });
     }
     if (charFootY > 950) initPlatforms();
