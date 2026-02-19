@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>콩콩춘식 - 착지 모션 여유 확보</title>
+  <title>콩콩춘식 - 모션 전환 보정</title>
   <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -55,7 +55,7 @@
 
   function init() {
     landRive = new rive.Rive({
-      src: 'kongsik_ingame_land.riv',
+      [cite_start]src: 'kongsik_ingame_land.riv', [cite: 289]
       canvas: landCanvas,
       artboard: 'Artboard',
       stateMachines: 'State Machine 1',
@@ -63,7 +63,7 @@
       onLoad: () => { landReady = true; landRive.resizeDrawingSurfaceToCanvas(); checkReady(); }
     });
     airRive = new rive.Rive({
-      src: 'kongsik_ingame_air.riv',
+      [cite_start]src: 'kongsik_ingame_air.riv', [cite: 1]
       canvas: airCanvas,
       artboard: 'Artboard',
       stateMachines: 'State Machine 1',
@@ -80,13 +80,12 @@
   }
   init();
 
-  let jumpPower = -20, gravity = 0.7; 
+  let jumpPower = -15, gravity = 0.65; 
   let p = { x: 197, y: 600, vy: 0 }, isRunning = false, lastDir = 1;
   let isSpringing = false; 
 
-  // --- 핵심: 랜드 모션 유지 시스템 ---
-  let landLockTimer = 0; // 이 타이머가 0보다 크면 무조건 land 모션 출력
-  const MIN_LAND_TIME = 200; // 0.2초 동안 land 모션 강제 유지 (여유 있게 조절)
+  let landLockTimer = 0; 
+  const MIN_LAND_TIME = 200; 
 
   window.addEventListener('keydown', e => { 
     if(e.code==='ArrowLeft'){ lastDir = -1; } 
@@ -99,7 +98,6 @@
     const dt = timestamp - lastTimestamp;
     lastTimestamp = timestamp;
 
-    // 물리 연산 (건드리지 않음)
     if (isSpringing) {
       p.vy *= 0.4; 
       if (Math.abs(p.vy) < 0.3) {
@@ -111,12 +109,9 @@
     }
     p.y += p.vy;
 
-    // 바닥 충돌 시
     if (p.y > 600 && !isSpringing && p.vy > 0) {
       p.y = 600;
       isSpringing = true;
-      
-      // 랜드 모션 잠금 시작
       landLockTimer = MIN_LAND_TIME;
       
       setLayer(landCanvas); 
@@ -124,14 +119,16 @@
       landRive.play("State Machine 1");
     } 
 
-    // 타이머 차감
     if (landLockTimer > 0) {
       landLockTimer -= dt;
     } 
-    // 타이머가 끝났고, 상승 중일 때만 air로 교체
     else if (p.vy < 0) {
-      setLayer(airCanvas); 
-      airRive.play("State Machine 1");
+      // --- 핵심 수정: 공중 모션 전환 시에도 리셋 ---
+      if (!airCanvas.classList.contains('active-chun')) {
+        setLayer(airCanvas);
+        airRive.scrub("State Machine 1", 0); // 프레임 처음으로 리셋
+        airRive.play("State Machine 1");
+      }
     }
 
     [landCanvas, airCanvas].forEach(c => {
@@ -153,6 +150,8 @@
     document.getElementById('start').classList.add('hidden');
     isRunning = true;
     p.vy = jumpPower;
+    landRive.resizeDrawingSurfaceToCanvas();
+    airRive.resizeDrawingSurfaceToCanvas();
     lastTimestamp = performance.now();
     loop(lastTimestamp);
   };
