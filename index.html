@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 다차원 이동 발판 패치</title>
+    <title>콩콩춘식 - 하드코어 비율 패치</title>
     <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -84,29 +84,30 @@ function createPlatformData(yPos) {
     const rand = Math.random();
     let distM = Math.floor(score * 0.01);
 
-    // ★ 거리별 나무 발판 비율 (100m~500m: 2%->10%)
-    let woodProb = distM < 100 ? 0.02 : Math.min(0.1, 0.02 + (0.08 * ((distM - 100) / 400)));
+    // ★ 나무 발판 비율: 0m(20%) -> 500m(90%) 점진적 증가
+    let woodProb = 0.2 + (Math.min(distM, 500) / 500) * 0.7;
     let isBreakable = rand < woodProb;
     const typeKey = isBreakable ? 'wood' : 'block';
     let canHaveMouse = (width === 138) && (rand < 0.2); 
 
-    // ★ 거리별 이동 발판 비율 (100m~500m: 5%->30%)
-    let moveProb = distM < 100 ? 0.05 : Math.min(0.3, 0.05 + (0.25 * ((distM - 100) / 400)));
+    // ★ 이동 발판: 상하 이동은 100m부터 출연
+    let moveProb = distM < 100 ? 0.05 : Math.min(0.4, 0.05 + (0.35 * ((distM - 100) / 400)));
     let moveType = 'normal';
     if (rand < moveProb) {
-        moveType = Math.random() > 0.5 ? 'h' : 'v'; // 상하(v) 또는 좌우(h) 랜덤 선택
+        if (distM < 100) moveType = 'h'; 
+        else moveType = Math.random() > 0.5 ? 'h' : 'v'; 
     }
 
     return {
-        x: Math.random() * (393 - width), y: yPos, baseY: yPos, // 상하 이동 기준점 저장
+        x: Math.random() * (393 - width), y: yPos, baseY: yPos,
         w: width, h: 22,
         img: PLATFORM_TYPES[typeKey][sizeIdx],
         isBreakable: isBreakable, durability: isBreakable ? 1 : 999,
         hasMouse: canHaveMouse, mouseX: Math.random() * (width - 72), mouseDir: Math.random() > 0.5 ? 1 : -1,
         mouseSpeed: 0.7 + Math.random() * 0.5, 
         mouseWaitTimer: 0, mouseYOffset: -52, mouseVY: 0,
-        type: moveType, speed: 1.5, verticalRange: 40 + Math.random() * 40, // 이동 속도 및 상하 범위
-        vPhase: Math.random() * Math.PI * 2, // 상하 이동 위기
+        type: moveType, speed: 1.5, verticalRange: 40 + Math.random() * 40,
+        vPhase: Math.random() * Math.PI * 2,
         isBroken: false, isTouched: false
     };
 }
@@ -151,16 +152,14 @@ function update() {
 
     platforms.forEach(p => {
         if (!p.isBroken) {
-            // ★ 발판 이동 로직 (상하/좌우)
             if (p.type === 'h') { 
                 p.x += p.speed; 
                 if (p.x <= 0 || p.x + p.w >= 393) p.speed *= -1; 
             } else if (p.type === 'v') {
                 p.vPhase += 0.03;
-                p.y = p.baseY + Math.sin(p.vPhase) * p.verticalRange; // 상하 왕복 계산
+                p.y = p.baseY + Math.sin(p.vPhase) * p.verticalRange;
             }
 
-            // ★ 쥐돌이 AI 및 충돌
             if (p.hasMouse) {
                 if (p.mouseWaitTimer > 0) p.mouseWaitTimer--;
                 else {
@@ -178,7 +177,6 @@ function update() {
                 }
             }
 
-            // ★ 캐릭터 착지 체크
             if (velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) {
                 loadRive('kongsik_ingame_land.riv'); 
                 velocityY = PHYSICS.jumpPower; currentY = p.y - 752; 
@@ -193,7 +191,6 @@ function update() {
                 }
             }
         } else if (p.hasMouse) {
-            // ★ 추락 쥐돌이
             p.mouseVY += 0.6; p.mouseYOffset += p.mouseVY;
         }
     });
@@ -208,7 +205,7 @@ function update() {
         scoreEl.innerText = Math.floor(score * 0.01) + "m";
         bgScrollY += diff; document.getElementById('game-stage').style.backgroundPositionY = (bgScrollY % 852) + 'px';
         platforms.forEach(p => {
-            p.y += diff; p.baseY += diff; // 기준점도 함께 이동
+            p.y += diff; p.baseY += diff;
             if (p.y > 852 && p.baseY > 852) { 
                 let randomGap = 50 + Math.random() * 160;
                 Object.assign(p, createPlatformData(Math.min(...platforms.map(pl => pl.y)) - randomGap)); 
