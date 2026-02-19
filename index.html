@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - UI 정밀 좌표 보정</title>
+    <title>콩콩춘식 - UI 숫자 정밀 좌표 보정</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
@@ -36,25 +36,25 @@
         /* 좌측 점수 */
         #score-board { position: absolute; top: 0; left: 20px; font-family: 'Poetsen One', sans-serif; font-size: 38px; color: #2D1D1C; line-height: 1; }
 
-        /* ★ 클로버 UI: 정밀 좌표 적용 ★ */
+        /* ★ 클로버 UI: 숫자 좌표 추가 보정 ★ */
         .rate-capsule {
-            position: absolute; top: -1px; right: 20px; /* 상단 기준점 미세 조정 */
+            position: absolute; top: -1px; right: 20px; 
             width: 130px; height: 46px; 
             background: #FFFFFF; border: 2px solid #F0E0C6; border-radius: 30px;
             box-sizing: border-box; overflow: visible;
         }
-        /* 클로버 아이콘: 우측 12px, 하단 9px 이동 */
+        /* 클로버 아이콘: 우측 12px, 하단 9px (기존 유지) */
         .ui-icon { 
             position: absolute; top: 0; left: 0;
             width: 25px; height: 25px; object-fit: contain; 
             transform: translate(12px, 9px); 
         }
-        /* 숫자: 우측 20px, 하단 4px 이동 */
+        /* 숫자: 우측 25px, 상단 -1px (기존 20,4에서 각 5px씩 보정) */
         #rate-board { 
             position: absolute; top: 0; left: 25px;
             font-size: 20px; font-weight: 800; color: #2D1D1C; 
             font-family: 'Arial', sans-serif; line-height: 46px;
-            transform: translate(20px, 4px);
+            transform: translate(25px, -1px); 
             white-space: nowrap;
         }
 
@@ -93,6 +93,7 @@
 </div>
 
 <script>
+// 게임 로직 (황금 효과 제거된 안정적인 롤백 버전)
 const PHYSICS = { gravity: 0.81, jumpPower: -18.9, superJumpPower: -45, moveSpeed: 7, motionHold: 10 };
 const PLATFORM_TYPES = { wood: ['wood_1.png', 'wood_2.png', 'wood_3.png'], block: ['block_1.png', 'block_2.png', 'block_3.png'] };
 const SIZES = [138, 98, 58]; 
