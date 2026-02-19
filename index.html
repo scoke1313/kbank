@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 점프 밸런스 최종 최적화</title>
+    <title>콩콩춘식 - 일반 점프 230px 보정판</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
@@ -21,7 +21,6 @@
         #bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('bg_ingame.png'); background-repeat: repeat-y; background-size: 100% auto; z-index: 1; }
         #btn-close-wrap { position: absolute; top: 16px; left: 4px; width: 44px; height: 44px; z-index: 1001; cursor: pointer; }
         #btn-close-wrap img { width: 100%; height: 100%; display: block; object-fit: contain; }
-
         .header-ui-container { position: absolute; top: 75px; left: 0; width: 100%; height: 120px; z-index: 1000; pointer-events: none; }
         #score-board { position: absolute; top: 0; left: 20px; font-family: 'Poetsen One', sans-serif; font-size: 38px; color: #2D1D1C; line-height: 1; }
         .rate-capsule { position: absolute; top: -1px; right: 20px; width: 130px; height: 46px; background: #FFFFFF; border: 2px solid #F0E0C6; border-radius: 30px; box-sizing: border-box; overflow: visible; }
@@ -77,8 +76,8 @@
 </div>
 
 <script>
-// ★ 점프 밸런스 재조정 (일반 점프력 상향) ★
-const PHYSICS = { gravity: 0.81, jumpPower: -24, superJumpPower: -75, moveSpeed: 7 }; 
+// 점프 높이 230px 보정 (jumpPower: -19.3)
+const PHYSICS = { gravity: 0.81, jumpPower: -19.3, superJumpPower: -68, moveSpeed: 7 }; 
 const SIZES = [138, 98, 58]; 
 let score = 0, cloverCount = 0, currentY = 0, velocityY = 0, posX = 0, bgScrollY = 0;
 let riveInstance, mainRiveInstance, keys = {}, currentScale = 1, platforms = [], lastLoadedFile = "", isGameRunning = false;
@@ -104,7 +103,7 @@ function createPlatformData(y) {
     return { x: Math.random() * (393 - SIZES[sIdx]), y, baseY: y, w: SIZES[sIdx], h: 22, img: isBreakable ? 'wood_1.png' : 'block_1.png', isBreakable, item: itemType, itemCollected: false, type: moveType, speed: 1.6, verticalRange: 40, vPhase: Math.random() * 6.28, isBroken: false };
 }
 
-function initPlatforms() { score = 0; currentY = 0; velocityY = 0; posX = 0; scoreEl.innerText = "0m"; rateEl.innerText = "0.00%"; platforms = []; let lastY = 752; for (let i = 0; i < 7; i++) { lastY -= (120 + Math.random() * 80); platforms.push(createPlatformData(lastY)); } platforms.push({ x: 127, y: 752, baseY: 752, w: 138, h: 22, img: 'block_1.png', isBreakable: false, type: 'normal' }); }
+function initPlatforms() { score = 0; currentY = 0; velocityY = 0; posX = 0; scoreEl.innerText = "0m"; rateEl.innerText = "0.00%"; platforms = []; let lastY = 752; for (let i = 0; i < 7; i++) { lastY -= (110 + Math.random() * 100); platforms.push(createPlatformData(lastY)); } platforms.push({ x: 127, y: 752, baseY: 752, w: 138, h: 22, img: 'block_1.png', isBreakable: false, type: 'normal' }); }
 
 function update() {
     if (!isGameRunning) { requestAnimationFrame(update); return; }
@@ -129,7 +128,7 @@ function update() {
             }
         }
     });
-    if (currentY < -250) { let d = -250 - currentY; currentY = -250; score += d; scoreEl.innerText = Math.floor(score * 0.01) + "m"; bgScrollY += d; document.getElementById('bg-layer').style.backgroundPositionY = (bgScrollY % 852) + 'px'; platforms.forEach(p => { p.y += d; p.baseY += d; if (p.y > 852) { Object.assign(p, createPlatformData(Math.min(...platforms.map(pl => pl.y)) - (120 + Math.random() * 80))); p.isBroken = false; } }); }
+    if (currentY < -250) { let d = -250 - currentY; currentY = -250; score += d; scoreEl.innerText = Math.floor(score * 0.01) + "m"; bgScrollY += d; document.getElementById('bg-layer').style.backgroundPositionY = (bgScrollY % 852) + 'px'; platforms.forEach(p => { p.y += d; p.baseY += d; if (p.y > 852) { Object.assign(p, createPlatformData(Math.min(...platforms.map(pl => pl.y)) - (100 + Math.random() * 100))); p.isBroken = false; } }); }
     if (752 + currentY > 1050) showResult();
     canvasCont.style.transform = `translate(${Math.floor(posX)}px, ${Math.floor(currentY)}px) scaleX(${currentScale})`;
     document.querySelectorAll('.platform, .game-item').forEach(el => el.remove());
