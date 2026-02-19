@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 파괴 효과 추가 버전</title>
+    <title>콩콩춘식 - 파괴 효과 개선 버전</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
@@ -43,8 +43,8 @@
         .ctrl-default { background-image: url('controller_Default.png'); }
         .ctrl-pressed { background-image: url('controller_pressed.png'); }
         
-        /* 나무 파편 스타일 */
-        .wood-chunk { position: absolute; background-color: #8D6E63; border: 1px solid #5D4037; z-index: 4; pointer-events: none; }
+        /* 나무 파편 스타일 (더 작게 조정) */
+        .wood-chunk { position: absolute; background-color: #A1887F; border: none; z-index: 4; pointer-events: none; border-radius: 1px; }
     </style>
 </head>
 <body>
@@ -69,26 +69,27 @@ let currentY = 0, velocityY = 0, posX = 0, score = 0, cloverRate = 0, bgScrollY 
 let isSuperJumping = false, riveInstance, keys = {}, currentScale = 1;
 let platforms = [], motionTimer = 0, lastLoadedFile = "", mouseAnimFrame = 0;
 
-// 나무 파편 효과를 위한 변수
 let woodParticles = [];
 
 class WoodParticle {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.vx = (Math.random() - 0.5) * 10;
-        this.vy = (Math.random() - 0.5) * 10 - 5;
-        this.size = 4 + Math.random() * 8;
+        // 속도 분산 확대
+        this.vx = (Math.random() - 0.5) * 12;
+        this.vy = (Math.random() - 0.5) * 12 - 4;
+        // 크기 더 작게 (2~5px)
+        this.size = 2 + Math.random() * 3;
         this.rotation = Math.random() * 360;
-        this.rotSpeed = (Math.random() - 0.5) * 10;
+        this.rotSpeed = (Math.random() - 0.5) * 15;
         this.life = 1.0;
     }
     update() {
         this.x += this.vx;
         this.y += this.vy;
-        this.vy += 0.5; // 중력
+        this.vy += 0.45; 
         this.rotation += this.rotSpeed;
-        this.life -= 0.02;
+        this.life -= 0.025; // 조금 더 빨리 사라지게
     }
 }
 
@@ -157,7 +158,6 @@ function update() {
     
     if (isSuperJumping && velocityY >= 0) { isSuperJumping = false; canvasCont.classList.remove('gold-glow'); }
     
-    // 파편 업데이트
     woodParticles.forEach(p => p.update());
     woodParticles = woodParticles.filter(p => p.life > 0);
 
@@ -195,8 +195,8 @@ function update() {
                     p.durability--; 
                     if (p.durability <= 0) {
                         p.isBroken = true;
-                        // ★ 나무 파편 생성 ★
-                        for(let i=0; i<12; i++) {
+                        // 입자 개수 15개로 증가, 크기는 생성자에서 작게 설정됨
+                        for(let i=0; i<15; i++) {
                             woodParticles.push(new WoodParticle(p.x + p.w/2, p.y + p.h/2));
                         }
                     } 
@@ -217,17 +217,14 @@ function update() {
                 p.isBroken = false; 
             } 
         });
-        // 파편도 스크롤에 맞춰 이동
         woodParticles.forEach(p => p.y += diff);
     }
     if (charFootY > 1050) initPlatforms();
     document.getElementById('canvas-container').style.transform = `translate(${Math.floor(posX)}px, ${Math.floor(currentY)}px) scaleX(${currentScale})`;
     
     const stage = document.getElementById('game-stage');
-    // 화면에 그릴 요소들 초기화
     document.querySelectorAll('.platform, .mouse-enemy, .game-item, .wood-chunk').forEach(el => el.remove());
     
-    // 파편 그리기
     woodParticles.forEach(p => {
         const chunk = document.createElement('div');
         chunk.className = 'wood-chunk';
