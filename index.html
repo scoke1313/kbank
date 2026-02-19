@@ -17,7 +17,7 @@
         }
         canvas { width: 100%; height: 100%; }
         .platform { position: absolute; background-size: 100% 100%; z-index: 5; }
-        /* 쥐돌이 크기 1.2배 확대 (60x45 -> 72x54) */
+        /* 쥐돌이 크기 1.2배 확대 (72px x 54px) */
         .mouse-enemy { position: absolute; width: 72px; height: 54px; background-size: contain; background-repeat: no-repeat; z-index: 6; }
         .controller {
             position: absolute; width: 80px; height: 80px; background-size: contain;
@@ -135,10 +135,10 @@ function update() {
             if (p.mouseX <= 0 || p.mouseX + 72 >= p.w) p.mouseDir *= -1;
             
             let mx = p.x + p.mouseX, my = p.y - 35;
-            // ★ 판정 범위 축소: 몸집(72)보다 좁은 범위(중심부 약 30px)만 체크
-            if (charLeft + 35 > mx + 20 && charLeft + 15 < mx + 50 && charFootY > my && charFootY < my + 45) {
-                velocityY = -10; // 넉백 강화
-                posX += (posX > (mx - p.x) ? 40 : -40); // 넉백 거리 강화
+            // ★ 판정 범위 축소: 몸집(72)보다 좁은 범위만 체크하여 아슬아슬하게 회피 가능
+            if (charLeft + 35 > mx + 20 && charLeft + 15 < mx + 52 && charFootY > my && charFootY < my + 45) {
+                velocityY = -10; 
+                posX += (posX > (mx - p.x) ? 40 : -40); 
             }
         }
 
@@ -178,8 +178,8 @@ function update() {
         if (p.hasMouse) {
             const m = document.createElement('div');
             m.className = 'mouse-enemy';
-            // 쥐 이미지 크기에 맞춰 배치 조정
-            m.style.cssText = `left:${p.x + p.mouseX}px;top:${p.y - 48}px;background-image:url('mouse_walk${mouseAnimFrame < 10 ? 1 : 2}.png'); transform: scaleX(${p.mouseDir})`;
+            // ★ 기존 -48px에서 -52px로 수정하여 4px 위로 올림 (발판과 겹침 방지)
+            m.style.cssText = `left:${p.x + p.mouseX}px;top:${p.y - 52}px;background-image:url('mouse_walk${mouseAnimFrame < 10 ? 1 : 2}.png'); transform: scaleX(${p.mouseDir})`;
             stage.appendChild(m);
         }
     });
