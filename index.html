@@ -11,8 +11,8 @@
     #game{position:relative;width:100%;max-width:480px;height:100%;max-height:800px;background:linear-gradient(#A1C4FD,#C2E9FB);overflow:hidden}
     canvas{width:100%;height:100%;display:block}
     #hud{position:absolute;top:16px;left:16px;z-index:5;background:rgba(255,255,255,.92);padding:10px 14px;border-radius:999px;font-weight:1000;color:#111827;}
-    .overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,.6);color:#fff;text-align:center;padding:24px}
-    .btn{margin-top:18px;padding:14px 38px;font-size:18px;font-weight:1000;background:#FEE500;color:#111827;border:0;border-radius:999px;cursor:pointer}
+    .overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,0.65);color:#fff;text-align:center;padding:24px}
+    .btn{margin-top:18px;padding:14px 45px;font-size:20px;font-weight:1000;background:#FEE500;color:#111827;border:0;border-radius:999px;cursor:pointer;box-shadow:0 6px 0 #cdae04}
     .hidden{display:none!important}
   </style>
 </head>
@@ -21,12 +21,10 @@
   <div id="hud">금리: <span id="rate">2.0</span>%</div>
   <canvas id="cv"></canvas>
   <div id="start" class="overlay">
-    <h1 style="color:#FFEF6B; font-size:32px;">콩콩춘식</h1>
-    <div id="loadStatus" style="color:#FFEF6B; font-weight:800; margin-bottom:10px;">캐릭터 로딩 중...</div>
+    <h1 style="color:#FFEF6B; font-size:36px; text-shadow:2px 2px 0 #333;">콩콩춘식</h1>
+    <div id="status" style="color:#FFEF6B; font-weight:800; font-size:16px; margin-bottom:12px;">캐릭터 로딩 중...</div>
     <button class="btn hidden" id="btnStart">게임 시작</button>
   </div>
-  <div id="touchL" style="position:absolute;bottom:0;left:0;width:50%;height:100%;z-index:3"></div>
-  <div id="touchR" style="position:absolute;bottom:0;right:0;width:50%;height:100%;z-index:3"></div>
 </div>
 
 <script>
@@ -34,36 +32,35 @@
   const canvas = document.getElementById('cv');
   const ctx = canvas.getContext('2d');
   const btnStart = document.getElementById('btnStart');
-  const loadStatus = document.getElementById('loadStatus');
+  const status = document.getElementById('status');
 
   function resize(){ canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; }
   window.addEventListener('resize', resize); resize();
 
-  // Rive 가상 캔버스 (86x112 고정) 
-  const RIVE_W = 86, RIVE_H = 112;
+  const RIVE_W = 86, RIVE_H = 112; // 춘식이 규격
   const riveCanvas = document.createElement('canvas');
   riveCanvas.width = RIVE_W; riveCanvas.height = RIVE_H;
   let kongsikLoaded = false;
-  let rInstance = null;
 
-  // 인게임 로딩 최적화
+  // 1. Rive 로직을 게임 엔진과 완전히 동기화
   const r = new rive.Rive({
-    src: 'kongsik_ingame.riv', [cite: 1]
+    src: 'kongsik_ingame.riv',
     canvas: riveCanvas,
-    artboard: 'Artboard', [cite: 1]
-    stateMachines: 'State Machine 1', [cite: 67]
+    artboard: 'Artboard',
+    stateMachines: 'State Machine 1',
     autoplay: true,
     onLoad: () => {
       r.resizeDrawingSurfaceToCanvas();
       kongsikLoaded = true;
-      loadStatus.innerText = "준비 완료! 🐯";
-      btnStart.classList.remove('hidden');
+      status.innerText = "준비 완료! 🐯";
+      btnStart.classList.remove('hidden'); // 성공 시에만 버튼 등장
     },
     onLoadError: () => {
-      loadStatus.innerText = "❌ 로드 실패 (파일 경로 확인)";
+      status.innerText = "❌ 로드 에러 (파일 경로/대소문자 확인)";
     }
   });
 
+  // 2. 게임 물리 엔진 (image_0f1087.png 물리 계승)
   let p = { x: 0, y: 0, vx: 0, vy: -12 }, isRunning = false, lastTime = 0, lastDir = 1;
   const keys = { left: false, right: false };
   let platforms = [];
@@ -88,11 +85,11 @@
 
     if(p.x < -30) p.x = canvas.width + 30; if(p.x > canvas.width + 30) p.x = -30;
 
-    // 발판 그리기
-    ctx.fillStyle = "#9CCC65";
+    // 발판 디자인 (image_0f765f.png 스타일)
     platforms.forEach(pl => {
-      ctx.fillRect(pl.x, pl.y, 120, 15);
-      if(p.vy > 0 && p.x > pl.x-15 && p.x < pl.x+135 && p.y+40 >= pl.y && p.y+40 <= pl.y+20) p.vy = -12;
+      ctx.fillStyle = "#C98B4B"; ctx.fillRect(pl.x, pl.y, 120, 15);
+      ctx.fillStyle = "#9CCC65"; ctx.fillRect(pl.x, pl.y, 120, 7);
+      if(p.vy > 0 && p.x > pl.x-15 && p.x < pl.x+135 && p.y+40 >= pl.y && p.y+40 <= pl.y+20) p.vy = -12.5;
     });
 
     if(p.y < canvas.height / 2 && p.vy < 0) {
@@ -100,7 +97,7 @@
       platforms.forEach(pl => { pl.y += dy; if(pl.y > canvas.height) { pl.y -= 92*8; pl.x = Math.random()*(canvas.width-120); } });
     }
 
-    // 캐릭터 그리기 (Rive)
+    // 캐릭터 렌더링 (Rive 가상 캔버스 복사)
     if(kongsikLoaded) {
       ctx.save();
       ctx.translate(p.x, p.y);
