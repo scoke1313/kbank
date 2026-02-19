@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>콩콩춘식 - 캐릭터 복구 완료</title>
+  <title>콩콩춘식 - 모션 업데이트 최종</title>
   <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     body{margin:0;background:#f0f0f0;overflow:hidden;font-family:'Pretendard',system-ui;display:flex;justify-content:center;align-items:center;height:100vh;touch-action:none}
     #game-container{position:relative;width:100%;max-width:480px;height:100%;max-height:800px;background:linear-gradient(#A1C4FD,#C2E9FB);overflow:hidden}
     #bgCanvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1}
-    /* 86x138 규격 고정 */
+    /* 86x138 사이즈 엄수 */
     #chunCanvas{position:absolute;z-index:2;width:86px;height:138px;pointer-events:none;display:none}
     #hud{position:absolute;top:16px;left:16px;z-index:5;background:rgba(255,255,255,.92);padding:10px 14px;border-radius:999px;font-weight:1000;color:#111827;}
     .overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,0.6);color:#fff;text-align:center;padding:24px}
@@ -50,20 +50,30 @@
   let kongsikLoaded = false;
   let rInstance = null;
 
-  // 1. Rive 로드 및 강제 재생 설정 
-  rInstance = new rive.Rive({
-    src: 'kongsik_ingame.riv',
-    canvas: chunCanvas,
-    artboard: 'Artboard',
-    stateMachines: 'State Machine 1',
-    autoplay: true,
-    onLoad: () => {
-      rInstance.resizeDrawingSurfaceToCanvas();
-      kongsikLoaded = true;
-      status.innerText = "준비 완료! 🐯";
-      btnStart.classList.remove('hidden');
+  // 1. 가장 확실한 로딩 방식: 바이너리 데이터를 직접 로드 
+  async function loadCharacter() {
+    try {
+      const response = await fetch('kongsik_ingame.riv'); [cite: 1]
+      const arrayBuffer = await response.arrayBuffer(); [cite: 1]
+      
+      rInstance = new rive.Rive({
+        buffer: arrayBuffer, [cite: 1]
+        canvas: chunCanvas,
+        artboard: 'Artboard', [cite: 1]
+        stateMachines: 'State Machine 1', [cite: 67, 280]
+        autoplay: true,
+        onLoad: () => {
+          rInstance.resizeDrawingSurfaceToCanvas(); [cite: 1]
+          kongsikLoaded = true;
+          status.innerText = "준비 완료! 🐯";
+          btnStart.classList.remove('hidden');
+        }
+      });
+    } catch (e) {
+      status.innerText = "로드 에러 (파일 확인 필요)";
     }
-  });
+  }
+  loadCharacter();
 
   let p = { x: 0, y: 0, vx: 0, vy: -12 }, isRunning = false, lastTime = 0, lastDir = 1;
   const keys = { left: false, right: false };
@@ -103,11 +113,11 @@
       platforms.forEach(pl => { pl.y += dy; if(pl.y > bgCanvas.height) { pl.y -= 92*8; pl.x = Math.random()*(bgCanvas.width-120); } });
     }
 
-    // 2. 캐릭터 위치 업데이트 (86x138 맞춰서 싱크)
+    // 2. 캐릭터 위치 업데이트 (86x138 정확한 오프셋)
     if (kongsikLoaded) {
       chunCanvas.style.display = 'block';
       chunCanvas.style.left = (p.x - 43) + 'px';
-      chunCanvas.style.top = (p.y - 69) + 'px'; 
+      chunCanvas.style.top = (p.y - 69) + 'px'; // 138 높이의 절반
       chunCanvas.style.transform = `scaleX(${lastDir})`;
     }
 
@@ -119,8 +129,7 @@
     document.getElementById('start').classList.add('hidden');
     isRunning = true; 
     reset(); 
-    // 게임 시작 시 춘식이 상태 다시 체크 
-    if(rInstance) rInstance.play();
+    if(rInstance) rInstance.play(); [cite: 1]
     loop(performance.now());
   };
 })();
