@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 발판 간격 및 난이도 최종 최적화</title>
+    <title>콩콩춘식 - 밸런스 재조정 버전</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
@@ -90,20 +90,23 @@ function createPlatformData(yPos) {
     let distM = Math.floor(score * 0.01);
     const rand = Math.random();
     
-    let sizeIdx = distM < 30 ? 0 : (distM < 100 ? Math.floor(Math.random() * 2) : Math.floor(rand * SIZES.length));
+    // 초보구간 삭제: 무작위 사이즈 믹스 (점차 작아짐)
+    let sizeIdx = distM < 100 ? Math.floor(rand * 2) : Math.floor(rand * SIZES.length);
     const width = SIZES[sizeIdx];
-    let isBreakable = distM < 100 ? false : (rand < 0.2 + (Math.min(distM, 500) / 500) * 0.7);
     
+    // 나무 발판 등장 (처음부터 약한 확률로 등장)
+    let isBreakable = (rand < 0.15 + (Math.min(distM, 500) / 500) * 0.75);
+    
+    // 이동형 타입 (처음부터 좌우 이동 등장)
     let moveType = 'normal';
-    if (distM > 50) {
-        let moveProb = Math.min(0.4, 0.05 + (0.35 * ((distM - 50) / 450)));
-        if (rand < moveProb) moveType = distM < 150 ? 'h' : (Math.random() > 0.5 ? 'h' : 'v');
-    }
+    let moveProb = Math.min(0.5, 0.1 + (0.4 * (distM / 500)));
+    if (rand < moveProb) moveType = distM < 150 ? 'h' : (Math.random() > 0.5 ? 'h' : 'v');
 
-    let canHaveMouse = (width === 138) && (rand < 0.15) && (distM > 80); 
-    let itemType = (!canHaveMouse && rand > 0.85) ? (Math.random() > 0.6 ? 'gold' : 'clover') : null;
+    // 쥐돌이 즉시 등장 확률
+    let canHaveMouse = (width >= 98) && (rand < 0.2); 
+    let itemType = (!canHaveMouse && rand > 0.8) ? (Math.random() > 0.6 ? 'gold' : 'clover') : null;
 
-    return { x: Math.random() * (393 - width), y: yPos, baseY: yPos, w: width, h: 22, img: PLATFORM_TYPES[isBreakable?'wood':'block'][sizeIdx], isBreakable, durability: 1, hasMouse: canHaveMouse, mouseX: Math.random() * (width - 72), mouseDir: Math.random() > 0.5 ? 1 : -1, mouseSpeed: 0.7 + Math.random() * 0.5, mouseWaitTimer: 0, mouseYOffset: -52, mouseVY: 0, item: itemType, itemCollected: false, type: moveType, speed: 1.5, verticalRange: 40 + Math.random() * 40, vPhase: Math.random() * Math.PI * 2, isBroken: false, isTouched: false };
+    return { x: Math.random() * (393 - width), y: yPos, baseY: yPos, w: width, h: 22, img: PLATFORM_TYPES[isBreakable?'wood':'block'][sizeIdx], isBreakable, durability: 1, hasMouse: canHaveMouse, mouseX: Math.random() * (width - 72), mouseDir: Math.random() > 0.5 ? 1 : -1, mouseSpeed: 0.7 + Math.random() * 0.6, mouseWaitTimer: 0, mouseYOffset: -52, mouseVY: 0, item: itemType, itemCollected: false, type: moveType, speed: 1.6, verticalRange: 40 + Math.random() * 40, vPhase: Math.random() * Math.PI * 2, isBroken: false, isTouched: false };
 }
 
 function initPlatforms() {
@@ -114,9 +117,9 @@ function initPlatforms() {
     canvasCont.classList.remove('gold-glow');
     platforms = []; 
     let lastY = 752;
-    // 초기 발판 생성 시 간격을 100~210px 사이로 고정
-    for (let i = 0; i < 6; i++) { 
-        lastY -= (110 + Math.random() * 100); // 최소 110 ~ 최대 210
+    // 간격 100~200px 조정
+    for (let i = 0; i < 7; i++) { 
+        lastY -= (100 + Math.random() * 100); 
         platforms.push(createPlatformData(lastY)); 
     }
     platforms.push({ x: 393/2-69, y: 752, baseY: 752, w: 138, h: 22, img: 'block_1.png', isBreakable: false, durability: 999, isTouched: false, type: 'normal' });
@@ -139,7 +142,7 @@ function update() {
         if (p.hasMouse) {
             if (!p.isBroken) {
                 if (p.mouseWaitTimer > 0) p.mouseWaitTimer--;
-                else { p.mouseX += p.mouseDir * p.mouseSpeed; if (p.mouseX <= 0 || p.mouseX + 72 >= p.w) { p.mouseDir *= -1; p.mouseWaitTimer = 30 + Math.floor(Math.random() * 90); } }
+                else { p.mouseX += p.mouseDir * p.mouseSpeed; if (p.mouseX <= 0 || p.mouseX + 72 >= p.w) { p.mouseDir *= -1; p.mouseWaitTimer = 20 + Math.floor(Math.random() * 60); } }
                 let mx = p.x + p.mouseX, my = p.y - 35;
                 if (!isSuperJumping && charLeft + 35 > mx + 20 && charLeft + 15 < mx + 52 && charFootY > my && charFootY < my + 45) { velocityY = -12; posX += (posX > (mx - p.x) ? 50 : -50); }
             } else { p.mouseVY += 0.6; p.mouseYOffset += p.mouseVY; }
@@ -177,9 +180,8 @@ function update() {
         platforms.forEach(p => { 
             p.y += diff; p.baseY += diff; 
             if (p.y > 852 && p.baseY > 852) { 
-                // 위쪽 끝에 있는 발판보다 110~210px 위에 새로운 발판 생성
                 let topY = Math.min(...platforms.map(pl => pl.y));
-                Object.assign(p, createPlatformData(topY - (110 + Math.random() * 100))); 
+                Object.assign(p, createPlatformData(topY - (100 + Math.random() * 100))); 
                 p.isBroken = false; 
             } 
         });
