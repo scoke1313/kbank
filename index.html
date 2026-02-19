@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 배경 수정 완료 버전</title>
+    <title>콩콩춘식 - UI 최적화 완료</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
@@ -10,16 +10,15 @@
     <style>
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
         
-        /* 전체 스테이지 */
         #game-stage { 
             position: relative; width: 393px; height: 852px; 
             background-color: #FFFDF5; 
-            background-size: 100% auto; /* 가로는 꽉 차게, 세로는 이미지 비율대로 */
+            background-size: 100% auto;
             background-repeat: repeat-y;
             overflow: hidden; 
         }
 
-        /* 메인 화면 레이어 */
+        /* --- 메인 화면 레이어 --- */
         #main-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background-image: url('bg_main.png'); background-size: 100% 100%;
@@ -28,15 +27,20 @@
         #main-rive-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         #main-canvas { width: 100%; height: 100%; }
         
+        /* 버튼이 뚱뚱해지지 않도록 가로 비율을 90%로 조정하고 높이를 자동으로 맞춤 */
         #start-button {
             position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
-            width: 340px; height: 80px;
-            background-image: url('btn_start.png'); background-size: 100% 100%;
+            width: 340px; 
+            height: 75px; /* 원본 버튼 이미지 비율에 맞춘 높이 조정 */
+            background-image: url('btn_start.png'); 
+            background-size: contain; /* 이미지 비율 유지 */
+            background-repeat: no-repeat;
+            background-position: center;
             cursor: pointer; border: none; background-color: transparent;
             z-index: 2001;
         }
 
-        /* 인게임 UI */
+        /* --- 인게임 UI 및 캐릭터 (생략 없이 통합) --- */
         #ingame-ui { display: none; }
         #btn-close-wrap { position: absolute; top: 16px; left: 4px; width: 44px; height: 44px; z-index: 1001; cursor: pointer; }
         #btn-close-wrap img { width: 100%; height: 100%; display: block; object-fit: contain; }
@@ -53,7 +57,6 @@
         }
         #rate-board { font-size: 20px; font-weight: 800; color: #2D1D1C; font-family: 'Arial', sans-serif; }
 
-        /* 인게임 요소들 */
         #canvas-container { position: absolute; width: 86px !important; height: 138px !important; bottom: 100px; left: 50%; margin-left: -43px; z-index: 10; display: none; }
         canvas { width: 100%; height: 100%; }
         .platform { position: absolute; background-size: 100% 100%; z-index: 5; }
@@ -80,7 +83,7 @@
         <div id="btn-close-wrap" onclick="location.reload();"><img src="close.png" alt="close"></div>
         <div class="header-ui-container">
             <div id="score-board">0m</div>
-            <div class="rate-capsule"><img src="clover_s.png" style="width:25px; margin-right:6px;" alt="clover"><span id="rate-board">0.00%</span></div>
+            <div class="rate-capsule"><img src="clover_s.png" class="ui-icon" alt="clover"><span id="rate-board">0.00%</span></div>
         </div>
     </div>
     
@@ -90,7 +93,7 @@
 </div>
 
 <script>
-// --- 메인 화면 리브 ---
+// --- 메인 애니메이션 설정 ---
 const mainRive = new rive.Rive({
     src: 'kongsik.riv',
     canvas: document.getElementById('main-canvas'),
@@ -99,14 +102,12 @@ const mainRive = new rive.Rive({
     onLoad: () => { mainRive.resizeDrawingSurfaceToCanvas(); }
 });
 
-// --- 게임 시작 ---
 function startGame() {
     document.getElementById('main-screen').style.display = 'none';
     document.getElementById('ingame-ui').style.display = 'block';
     document.getElementById('canvas-container').style.display = 'block';
     document.querySelectorAll('.controller').forEach(el => el.style.display = 'block');
     
-    // 인게임 배경으로 교체
     const stage = document.getElementById('game-stage');
     stage.style.backgroundImage = "url('bg_ingame.png')";
     stage.style.backgroundSize = "100% auto";
@@ -116,7 +117,7 @@ function startGame() {
     initPlatforms();
 }
 
-// --- 인게임 엔진 (버전 1.0 기반) ---
+// --- 인게임 엔진 핵심 로직 (변화 없음) ---
 const PHYSICS = { gravity: 0.81, jumpPower: -18.9, moveSpeed: 7, motionHold: 10 };
 const PLATFORM_TYPES = { wood: ['wood_1.png', 'wood_2.png', 'wood_3.png'], block: ['block_1.png', 'block_2.png', 'block_3.png'] };
 const SIZES = [138, 98, 58]; 
@@ -172,14 +173,11 @@ attachControl(btnLeft, 'ArrowLeft'); attachControl(btnRight, 'ArrowRight');
 
 function update() {
     if (!isPlaying) { requestAnimationFrame(update); return; }
-
     if (keys['ArrowLeft']) { posX -= PHYSICS.moveSpeed; currentScale = -1; }
     if (keys['ArrowRight']) { posX += PHYSICS.moveSpeed; currentScale = 1; }
     posX = Math.max(-153, Math.min(153, posX));
-    
     velocityY += PHYSICS.gravity;
     currentY += velocityY;
-    
     const charFootY = 752 + currentY, charLeft = 393/2 + posX - 25;
     
     woodParticles.forEach(p => p.update());
@@ -193,25 +191,21 @@ function update() {
     });
 
     if (motionTimer > 0) { motionTimer--; if (motionTimer === 1) loadRive('kongsik_ingame_air.riv'); }
-    
     if (currentY < -250) {
         let diff = -250 - currentY; currentY = -250; score += diff;
         document.getElementById('score-board').innerText = Math.floor(score * 0.01) + "m";
-        bgScrollY += diff; 
-        document.getElementById('game-stage').style.backgroundPositionY = (bgScrollY % 852) + 'px';
+        bgScrollY += diff; document.getElementById('game-stage').style.backgroundPositionY = (bgScrollY % 852) + 'px';
         platforms.forEach(p => { 
             p.y += diff; 
             if (p.y > 852) { Object.assign(p, createPlatformData(-100)); p.isBroken = false; }
         });
         woodParticles.forEach(p => p.y += diff);
     }
-
     if (charFootY > 1050) location.reload();
 
     document.getElementById('canvas-container').style.transform = `translate(${posX}px, ${currentY}px) scaleX(${currentScale})`;
-    
     const stage = document.getElementById('game-stage');
-    document.querySelectorAll('.platform, .wood-chunk').forEach(el => el.remove());
+    document.querySelectorAll('.platform, .mouse-enemy, .game-item, .wood-chunk').forEach(el => el.remove());
     woodParticles.forEach(p => {
         const chunk = document.createElement('div'); chunk.className = 'wood-chunk';
         chunk.style.cssText = `left:${p.x}px; top:${p.y}px; width:${p.size}px; height:${p.size}px; opacity:${p.life}; transform:rotate(${p.rotation}deg);`;
