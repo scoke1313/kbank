@@ -6,7 +6,6 @@
     <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        /* 요청하신 393x852 사이즈 고정 */
         #game-stage { 
             position: relative; 
             width: 393px; 
@@ -14,18 +13,16 @@
             background: #fff; 
             overflow: hidden; 
         }
-        /* 캐릭터 사이즈 86x138 고정 */
         #canvas-container {
             position: absolute;
             width: 86px;
             height: 138px;
-            bottom: 100px; /* 초기 시작 위치 */
+            bottom: 100px;
             left: 50%;
             margin-left: -43px; 
             z-index: 10;
         }
         canvas { width: 100%; height: 100%; }
-        /* 발판 스타일 */
         .platform {
             position: absolute;
             width: 80px;
@@ -47,50 +44,44 @@
 // --- 물리 파라미터 ---
 const PHYSICS = {
     gravity: 0.9,       
-    jumpPower: -20,     // 발판 점프력
+    jumpPower: -20,     
     moveSpeed: 7,
     stageWidth: 393,
     stageHeight: 852,
-    motionHold: 12      // 0.2초 유지용 (60fps 기준 12프레임)
+    motionHold: 12      
 };
 
-let currentY = 0;       // 캐릭터의 상대적 높이
+let currentY = 0;       
 let velocityY = 0;
 let posX = 0;           
 let isJumping = true;   
 let riveInstance;
 let keys = {};          
 let currentScale = 1;   
-let motionTimer = 0;    // 0.2초 타이머
-let platforms = [];     // 발판 배열
+let motionTimer = 0;    
+let platforms = [];     
 let currentFile = "";
 
-// Rive 초기화 함수
 function loadRive(fileName) {
     if (currentFile === fileName) return;
     currentFile = fileName;
     if (riveInstance) riveInstance.cleanup();
-    
     riveInstance = new rive.Rive({
         src: fileName,
         canvas: document.getElementById('canvas'),
         autoplay: true,
         stateMachines: 'State Machine 1',
-        onLoad: () => {
-            riveInstance.resizeDrawingSurfaceToCanvas();
-        }
+        onLoad: () => { riveInstance.resizeDrawingSurfaceToCanvas(); }
     });
 }
 
-// 발판 초기 생성
 function initPlatforms() {
     for (let i = 0; i < 8; i++) {
         platforms.push({
             x: Math.random() * (PHYSICS.stageWidth - 80),
-            y: i * 110 + 100 // 일정한 간격으로 배치
+            y: i * 110 + 100 
         });
     }
-    // 시작할 때 춘식이 발 밑에 발판 하나 깔아주기
     platforms.push({ x: PHYSICS.stageWidth / 2 - 40, y: 720 });
 }
 
@@ -98,63 +89,64 @@ loadRive('kongsik_ingame_air.riv');
 initPlatforms();
 
 function update() {
-    // 1. 좌우 이동 및 화면 제한
+    // 1. 이동 제어
     if (keys['ArrowLeft']) { posX -= PHYSICS.moveSpeed; currentScale = -1; }
     if (keys['ArrowRight']) { posX += PHYSICS.moveSpeed; currentScale = 1; }
     const limit = (PHYSICS.stageWidth / 2) - 43;
     if (posX < -limit) posX = -limit;
     if (posX > limit) posX = limit;
 
-    // 2. 수직 물리 로직
+    // 2. 물리 계산
     velocityY += PHYSICS.gravity;
     currentY += velocityY;
 
-    // 3. 모션 제어 (0.2초 유지 룰)
+    // 3. 모션 유지
     if (motionTimer > 0) {
         motionTimer--;
-        loadRive('kongsik_ingame_air.riv'); // 0.2초 동안 air 강제 유지
+        loadRive('kongsik_ingame_air.riv');
     } else if (velocityY > 0) {
-        loadRive('kongsik_ingame_land.riv'); // 떨어질 땐 land
+        loadRive('kongsik_ingame_land.riv');
     }
 
-    // 4. 발판 충돌 판정 (내려오는 중일 때만)
+    // 4. 세밀한 히트박스 충돌 판정
     if (velocityY > 0) {
         platforms.forEach(p => {
-            // 캐릭터 실제 화면 좌표 계산
-            const charBottom = 852 - 100 - currentY; 
-            const charLeft = (PHYSICS.stageWidth / 2) + posX - 30; // 판정 너비 살짝 줄임
+            // [세밀 설계] 춘식이 발 끝 위치 계산 (화면상의 y좌표)
+            // 852(전체높이) - 100(기본여백) - currentY(물리높이) = 캐릭터 발 끝 위치
+            // 여기서 형님이 말씀하신대로 2px 올려서 판정선 생성
+            const charFootLine = (852 - 100 - currentY) - 2; 
+            
+            // 발바닥 가로 판정 (캐릭터 중심에서 좌우 25px씩, 총 50px로 세밀화)
+            const charLeft = (PHYSICS.stageWidth / 2) + posX - 25;
+            const charRight = (PHYSICS.stageWidth / 2) + posX + 25;
 
-            if (charLeft + 60 > p.x && charLeft < p.x + 80 &&
-                charBottom > p.y && charBottom < p.y + 20) {
+            // 충돌 조건: 
+            // 1. 캐릭터 발바닥이 발판 가로 범위 안에 있을 때
+            // 2. 발바닥 판정선이 발판 윗면을 지나칠 때 (오차범위 15px 내외)
+            if (charRight > p.x && charLeft < p.x + 80 &&
+                charFootLine > p.y && charFootLine < p.y + 15) {
                 
-                velocityY = PHYSICS.jumpPower; // 자동 점프
-                motionTimer = PHYSICS.motionHold; // 0.2초 타이머 시작
-                loadRive('kongsik_ingame_air.riv'); // 즉시 1번 모션
+                velocityY = PHYSICS.jumpPower; 
+                motionTimer = PHYSICS.motionHold; 
+                loadRive('kongsik_ingame_air.riv');
             }
         });
     }
 
-    // 5. 무한 스크롤 (카메라 효과)
+    // 5. 무한 스크롤 및 리셋 (원본 유지)
     if (currentY < -200) {
         let diff = -200 - currentY;
-        currentY = -200; // 캐릭터 위치 고정
+        currentY = -200;
         platforms.forEach(p => {
-            p.y += diff; // 발판들을 아래로 밀기
+            p.y += diff;
             if (p.y > PHYSICS.stageHeight) {
-                p.y = 0; // 화면 아래로 나간 발판을 위로 재배치
+                p.y = 0;
                 p.x = Math.random() * (PHYSICS.stageWidth - 80);
             }
         });
     }
+    if (currentY > 200) { currentY = 0; velocityY = PHYSICS.jumpPower; motionTimer = PHYSICS.motionHold; }
 
-    // 6. 추락 시 게임 리셋 (바닥으로 떨어졌을 때)
-    if (currentY > 200) {
-        currentY = 0;
-        velocityY = PHYSICS.jumpPower;
-        motionTimer = PHYSICS.motionHold;
-    }
-
-    // 7. 화면 업데이트
     document.getElementById('canvas-container').style.transform = 
         `translate(${posX}px, ${currentY}px) scaleX(${currentScale})`;
     
@@ -164,10 +156,8 @@ function update() {
 
 function renderPlatforms() {
     const stage = document.getElementById('game-stage');
-    // 기존 발판 제거 (성능 최적화는 나중에 하고 일단 기능 위주)
     const oldPlatforms = document.querySelectorAll('.platform');
     oldPlatforms.forEach(p => p.remove());
-
     platforms.forEach(p => {
         const div = document.createElement('div');
         div.className = 'platform';
