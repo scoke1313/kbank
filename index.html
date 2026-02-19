@@ -86,7 +86,7 @@
 
   // --- 핵심: 랜드 모션 유지 시스템 ---
   let landLockTimer = 0; // 이 타이머가 0보다 크면 무조건 land 모션 출력
-  const MIN_LAND_TIME = 300; // 0.3초 동안 land 모션 강제 유지 (여유 있게 조절)
+  const MIN_LAND_TIME = 200; // 0.2초 동안 land 모션 강제 유지 (여유 있게 조절)
 
   window.addEventListener('keydown', e => { 
     if(e.code==='ArrowLeft'){ lastDir = -1; } 
