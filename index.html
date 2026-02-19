@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 연출 효과 완벽 복구본</title>
+    <title>콩콩춘식 - 결과창 통합본</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
@@ -22,6 +22,26 @@
             position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
             width: 340px; height: 75px; background-image: url('btn_start.png'); background-size: contain; 
             background-repeat: no-repeat; background-position: center; cursor: pointer; border: none; background-color: transparent; z-index: 2001;
+        }
+
+        /* 결과 화면 */
+        #result-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 3000; display: none;
+            justify-content: center; align-items: center; flex-direction: column;
+        }
+        .result-card {
+            width: 320px; background: white; border-radius: 30px; padding: 40px 20px;
+            text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .result-title { font-family: 'Poetsen One', sans-serif; font-size: 28px; color: #2D1D1C; margin-bottom: 20px; }
+        .result-detail { font-size: 16px; color: #666; margin: 5px 0; }
+        .final-rate-wrap { margin: 25px 0; }
+        .final-rate-label { font-size: 18px; font-weight: bold; color: #2D1D1C; }
+        .final-rate-value { font-size: 48px; font-weight: 800; color: #E91E63; font-family: 'Arial', sans-serif; }
+        #retry-button {
+            width: 200px; height: 55px; background: #2D1D1C; color: white;
+            border-radius: 30px; border: none; font-size: 18px; font-weight: bold; cursor: pointer;
         }
 
         /* 인게임 UI */
@@ -58,11 +78,24 @@
         <button id="start-button" onclick="startGame()"></button>
     </div>
 
+    <div id="result-screen">
+        <div class="result-card">
+            <div class="result-title">적금 만기!</div>
+            <div class="result-detail" id="res-dist">점프 거리: 0m</div>
+            <div class="result-detail" id="res-clover">클로버 획득: 0개</div>
+            <div class="final-rate-wrap">
+                <div class="final-rate-label">최종 적용 금리</div>
+                <div class="final-rate-value" id="res-total">0.00%</div>
+            </div>
+            <button id="retry-button" onclick="location.reload()">다시 도전하기</button>
+        </div>
+    </div>
+
     <div id="ingame-ui">
         <div id="btn-close-wrap" onclick="location.reload();"><img src="close.png" alt="close"></div>
         <div class="header-ui-container">
             <div id="score-board">0m</div>
-            <div class="rate-capsule"><img src="clover_s.png" style="width:25px; margin-right:6px;" alt="clover"><span id="rate-board">0.00%</span></div>
+            <div class="rate-capsule"><img src="clover_s.png" style="width:25px; margin-right:6px;" alt="clover"><span id="rate-board">0개</span></div>
         </div>
     </div>
     
@@ -72,12 +105,13 @@
 </div>
 
 <script>
+// --- 상태 변수 ---
 const PHYSICS = { gravity: 0.81, jumpPower: -18.9, superJumpPower: -45, moveSpeed: 7, motionHold: 10 };
 const PLATFORM_TYPES = { wood: ['wood_1.png', 'wood_2.png', 'wood_3.png'], block: ['block_1.png', 'block_2.png', 'block_3.png'] };
 const SIZES = [138, 98, 58];
 
-let isPlaying = false, isSuperJumping = false;
-let currentY = 0, velocityY = 0, posX = 0, score = 0, cloverRate = 0, bgScrollY = 0;
+let isPlaying = false, isSuperJumping = false, isGameOver = false;
+let currentY = 0, velocityY = 0, posX = 0, score = 0, cloverCount = 0, bgScrollY = 0;
 let riveInstance, keys = {}, currentScale = 1, platforms = [], woodParticles = [], motionTimer = 0, lastLoadedFile = "", mouseAnimFrame = 0;
 
 // 메인 리브
@@ -96,7 +130,24 @@ function startGame() {
     document.querySelectorAll('.controller').forEach(el => el.style.display = 'block');
     document.getElementById('game-stage').style.backgroundImage = "url('bg_ingame.png')";
     isPlaying = true;
+    isGameOver = false;
     initPlatforms();
+}
+
+function showResult() {
+    isPlaying = false;
+    isGameOver = true;
+    
+    const distM = Math.floor(score * 0.01);
+    const distRate = distM * 0.01; // 거리당 0.01% 
+    const cloverRate = cloverCount * 0.1; // 클로버당 0.1% 
+    const totalRate = distRate + cloverRate; [cite: 1, 11]
+
+    document.getElementById('res-dist').innerText = `점프 거리: ${distM}m (금리 +${distRate.toFixed(2)}%)`; [cite: 1, 11]
+    document.getElementById('res-clover').innerText = `클로버 획득: ${cloverCount}개 (금리 +${cloverRate.toFixed(2)}%)`; [cite: 1, 11]
+    document.getElementById('res-total').innerText = `${totalRate.toFixed(2)}%`; [cite: 1, 11]
+    
+    document.getElementById('result-screen').style.display = 'flex';
 }
 
 function loadRive(fileName) {
@@ -106,7 +157,7 @@ function loadRive(fileName) {
     riveInstance = new rive.Rive({ src: fileName, canvas: document.getElementById('canvas'), autoplay: true, stateMachines: 'State Machine 1', onLoad: () => riveInstance.resizeDrawingSurfaceToCanvas() });
 }
 
-const setInput = (key, isDown, btn) => { keys[key] = isDown; if(btn) btn.classList.toggle('ctrl-pressed', isDown); };
+const setInput = (key, isDown, btn) => { if(isGameOver) return; keys[key] = isDown; if(btn) btn.classList.toggle('ctrl-pressed', isDown); };
 window.addEventListener('keydown', (e) => { 
     if (e.code === 'ArrowLeft') setInput('ArrowLeft', true, document.getElementById('btn-left')); 
     if (e.code === 'ArrowRight') setInput('ArrowRight', true, document.getElementById('btn-right')); 
@@ -142,21 +193,13 @@ function createPlatformData(yPos) {
     let canHaveMouse = (width >= 98) && (rand < 0.2); 
     let itemType = (!canHaveMouse && rand > 0.8) ? (Math.random() > 0.6 ? 'gold' : 'clover') : null;
 
-    return { 
-        x: Math.random() * (393 - width), y: yPos, baseY: yPos, w: width, h: 22, 
-        img: PLATFORM_TYPES[isBreakable?'wood':'block'][sizeIdx], isBreakable, 
-        hasMouse: canHaveMouse, mouseX: Math.random() * (width - 72), mouseDir: 1, mouseSpeed: 0.7 + Math.random() * 0.6, 
-        mouseWaitTimer: 0, mouseYOffset: -52, mouseVY: 0, 
-        item: itemType, itemCollected: false, type: moveType, speed: 1.6, 
-        verticalRange: 40 + Math.random() * 40, vPhase: Math.random() * Math.PI * 2, 
-        isBroken: false, isTouched: false 
-    };
+    return { x: Math.random() * (393 - width), y: yPos, baseY: yPos, w: width, h: 22, img: PLATFORM_TYPES[isBreakable?'wood':'block'][sizeIdx], isBreakable, hasMouse: canHaveMouse, mouseX: Math.random() * (width - 72), mouseDir: 1, mouseSpeed: 0.7 + Math.random() * 0.6, mouseWaitTimer: 0, mouseYOffset: -52, mouseVY: 0, item: itemType, itemCollected: false, type: moveType, speed: 1.6, verticalRange: 40 + Math.random() * 40, vPhase: Math.random() * Math.PI * 2, isBroken: false };
 }
 
 function initPlatforms() {
-    score = 0; cloverRate = 0; currentY = 0; velocityY = 0; posX = 0; woodParticles = [];
+    score = 0; cloverCount = 0; currentY = 0; velocityY = 0; posX = 0; woodParticles = [];
     document.getElementById('score-board').innerText = "0m";
-    document.getElementById('rate-board').innerText = "0.00%";
+    document.getElementById('rate-board').innerText = "0개";
     platforms = [];
     let lastY = 752;
     for (let i = 0; i < 7; i++) { lastY -= (120 + Math.random() * 80); platforms.push(createPlatformData(lastY)); }
@@ -167,15 +210,14 @@ function initPlatforms() {
 function spawnPickupEffect(x, y) {
     const eff = document.createElement('div');
     eff.className = 'pickup-effect';
-    eff.style.left = (x - 80) + 'px';
-    eff.style.top = (y - 40) + 'px';
+    eff.style.left = (x - 80) + 'px'; eff.style.top = (y - 40) + 'px';
     document.getElementById('game-stage').appendChild(eff);
     setTimeout(() => { eff.style.transform = 'translateY(-80px)'; eff.style.opacity = '0'; }, 10);
     setTimeout(() => eff.remove(), 800);
 }
 
 function update() {
-    if (!isPlaying) { requestAnimationFrame(update); return; }
+    if (!isPlaying) { if(!isGameOver) requestAnimationFrame(update); return; }
 
     if (keys['ArrowLeft']) { posX -= PHYSICS.moveSpeed; currentScale = -1; }
     if (keys['ArrowRight']) { posX += PHYSICS.moveSpeed; currentScale = 1; }
@@ -193,20 +235,13 @@ function update() {
     const charFootY = 752 + currentY, charLeft = 393/2 + posX - 25;
 
     platforms.forEach(p => {
-        // 쥐돌이 추락 로직
         if (p.hasMouse) {
             if (!p.isBroken) {
                 if (p.mouseWaitTimer > 0) p.mouseWaitTimer--;
                 else { p.mouseX += p.mouseDir * p.mouseSpeed; if (p.mouseX <= 0 || p.mouseX + 72 >= p.w) { p.mouseDir *= -1; p.mouseWaitTimer = 30; } }
                 let mx = p.x + p.mouseX, my = p.y - 35;
-                if (!isSuperJumping && charLeft + 35 > mx + 20 && charLeft + 15 < mx + 52 && charFootY > my && charFootY < my + 45) { 
-                    velocityY = -12; posX += (posX > (mx - p.x) ? 50 : -50); 
-                }
-            } else {
-                // 발판이 부서지면 쥐돌이도 추락!
-                p.mouseVY += 0.6;
-                p.mouseYOffset += p.mouseVY;
-            }
+                if (!isSuperJumping && charLeft + 35 > mx + 20 && charLeft + 15 < mx + 52 && charFootY > my && charFootY < my + 45) { velocityY = -12; posX += (posX > (mx - p.x) ? 50 : -50); }
+            } else { p.mouseVY += 0.6; p.mouseYOffset += p.mouseVY; }
         }
 
         if (!p.isBroken) {
@@ -218,8 +253,9 @@ function update() {
                 if (charLeft + 45 > ix && charLeft + 5 < ix + 50 && charFootY > iy && charFootY < iy + 50) {
                     p.itemCollected = true;
                     if (p.item === 'clover') {
-                        cloverRate += 0.1; document.getElementById('rate-board').innerText = cloverRate.toFixed(2) + "%";
-                        spawnPickupEffect(ix + 25, iy); // 픽업 이펙트!
+                        cloverCount++;
+                        document.getElementById('rate-board').innerText = `${cloverCount}개`; [cite: 1, 11]
+                        spawnPickupEffect(ix + 25, iy);
                     } else if (p.item === 'gold') { 
                         isSuperJumping = true; velocityY = PHYSICS.superJumpPower; 
                         document.getElementById('canvas-container').classList.add('gold-glow'); loadRive('kongsik_ingame_air.riv'); 
@@ -229,10 +265,7 @@ function update() {
 
             if (!isSuperJumping && velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) { 
                 loadRive('kongsik_ingame_land.riv'); velocityY = PHYSICS.jumpPower; currentY = p.y - 752; motionTimer = PHYSICS.motionHold;
-                if (p.isBreakable) { 
-                    p.isBroken = true; 
-                    for(let i=0; i<15; i++) woodParticles.push(new WoodParticle(p.x + p.w/2, p.y)); 
-                }
+                if (p.isBreakable) { p.isBroken = true; for(let i=0; i<15; i++) woodParticles.push(new WoodParticle(p.x + p.w/2, p.y)); }
             }
         }
     });
@@ -241,7 +274,7 @@ function update() {
     
     if (currentY < -250) {
         let diff = -250 - currentY; currentY = -250; score += diff;
-        document.getElementById('score-board').innerText = Math.floor(score * 0.01) + "m";
+        document.getElementById('score-board').innerText = Math.floor(score * 0.01) + "m"; [cite: 1, 11]
         bgScrollY += diff; document.getElementById('game-stage').style.backgroundPositionY = (bgScrollY % 852) + 'px';
         platforms.forEach(p => { 
             p.y += diff; p.baseY += diff;
@@ -254,7 +287,7 @@ function update() {
         woodParticles.forEach(p => p.y += diff);
     }
 
-    if (charFootY > 1050) location.reload();
+    if (charFootY > 1050) showResult(); [cite: 1, 11]
 
     document.getElementById('canvas-container').style.transform = `translate(${posX}px, ${currentY}px) scaleX(${currentScale})`;
     
