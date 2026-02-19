@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 네비게이션 삭제 버전</title>
+    <title>콩콩춘식 - 상단 캡슐 UI 패치</title>
     <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -13,9 +13,25 @@
             background-size: 100% auto; background-color: #FFFDF5; overflow: hidden; 
         }
 
-        /* UI 위치 조정 (네비게이션이 삭제되었으므로 상단 적절한 위치에 배치) */
-        #score-board { position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold; color: #5c3e34; z-index: 100; }
-        #rate-board { position: absolute; top: 20px; right: 20px; font-size: 22px; font-weight: bold; color: #2E7D32; z-index: 100; }
+        /* --- 상단 캡슐 UI 레이아웃 --- */
+        .header-ui-wrapper {
+            position: absolute; top: 25px; left: 0; width: 100%;
+            display: flex; justify-content: space-between;
+            padding: 0 15px; box-sizing: border-box; z-index: 1000;
+        }
+
+        .ui-capsule {
+            display: flex; align-items: center;
+            background: #FFFFFF; border: 2px solid #F3EDE2;
+            border-radius: 25px; padding: 4px 12px 4px 6px;
+            min-width: 90px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        }
+
+        .ui-icon { width: 26px; height: 26px; margin-right: 6px; object-fit: contain; }
+        .ui-value { font-size: 19px; font-weight: 800; color: #5c3e34; font-family: 'Arial', sans-serif; }
+
+        /* 기존 absolute 레이아웃 제거를 위해 아이디 위치값 초기화 */
+        #score-board, #rate-board { position: static; font-size: inherit; color: inherit; font-weight: inherit; }
 
         #canvas-container {
             position: absolute; width: 86px !important; height: 138px !important;
@@ -52,8 +68,16 @@
 <body>
 
 <div id="game-stage">
-    <div id="score-board">0m</div>
-    <div id="rate-board">Rate: +0.00%</div> 
+    <div class="header-ui-wrapper">
+        <div class="ui-capsule">
+            <img src="time_s.png" class="ui-icon" alt="time">
+            <span id="score-board" class="ui-value">0m</span>
+        </div>
+        <div class="ui-capsule">
+            <img src="clover_s.png" class="ui-icon" alt="clover">
+            <span id="rate-board" class="ui-value">0.00%</span>
+        </div>
+    </div>
     
     <div id="canvas-container"><canvas id="canvas"></canvas></div>
     
@@ -62,6 +86,7 @@
 </div>
 
 <script>
+// 로직은 롤백해주신 코드 그대로 유지 (UI 반영을 위해 innerText 연동만 됨)
 const PHYSICS = { gravity: 0.81, jumpPower: -18.9, superJumpPower: -45, moveSpeed: 7, motionHold: 10 };
 const PLATFORM_TYPES = { wood: ['wood_1.png', 'wood_2.png', 'wood_3.png'], block: ['block_1.png', 'block_2.png', 'block_3.png'] };
 const SIZES = [138, 98, 58]; 
@@ -81,14 +106,8 @@ const setInput = (key, isDown, btn) => {
     if(btn) { btn.classList.toggle('ctrl-default', !isDown); btn.classList.toggle('ctrl-pressed', isDown); }
 };
 
-window.addEventListener('keydown', (e) => {
-    if (e.code === 'ArrowLeft') setInput('ArrowLeft', true, btnLeft);
-    if (e.code === 'ArrowRight') setInput('ArrowRight', true, btnRight);
-});
-window.addEventListener('keyup', (e) => {
-    if (e.code === 'ArrowLeft') setInput('ArrowLeft', false, btnLeft);
-    if (e.code === 'ArrowRight') setInput('ArrowRight', false, btnRight);
-});
+window.addEventListener('keydown', (e) => { if (e.code === 'ArrowLeft') setInput('ArrowLeft', true, btnLeft); if (e.code === 'ArrowRight') setInput('ArrowRight', true, btnRight); });
+window.addEventListener('keyup', (e) => { if (e.code === 'ArrowLeft') setInput('ArrowLeft', false, btnLeft); if (e.code === 'ArrowRight') setInput('ArrowRight', false, btnRight); });
 
 const attachControl = (btn, key) => {
     btn.addEventListener('touchstart', (e) => { e.preventDefault(); setInput(key, true, btn); });
@@ -126,7 +145,7 @@ function spawnBreakParticles(x, y, width) {
 function initPlatforms() {
     document.querySelectorAll('.platform, .mouse-enemy, .particle, .game-item, .pickup-effect').forEach(el => el.remove());
     score = 0; cloverRate = 0; isSuperJumping = false;
-    scoreEl.innerText = "0m"; rateEl.innerText = "Rate: +0.00%";
+    scoreEl.innerText = "0m"; rateEl.innerText = "0.00%"; // 텍스트만 깔끔하게 나오도록 수정
     bgScrollY = 0; currentY = 0; velocityY = 0; posX = 0;
     canvasCont.classList.remove('gold-glow');
     document.getElementById('game-stage').style.backgroundPositionY = '0px';
@@ -156,7 +175,7 @@ function update() {
                 if (charLeft + 45 > ix && charLeft + 5 < ix + 50 && charFootY > iy && charFootY < iy + 50) {
                     p.itemCollected = true;
                     if (p.item === 'clover') {
-                        cloverRate += 0.1; rateEl.innerText = `Rate: +${cloverRate.toFixed(2)}%`;
+                        cloverRate += 0.1; rateEl.innerText = `${cloverRate.toFixed(2)}%`;
                         let eff = document.createElement('div');
                         eff.className = 'pickup-effect'; 
                         eff.style.left = (ix + 25 - 80) + 'px'; eff.style.top = (iy - 40) + 'px'; 
