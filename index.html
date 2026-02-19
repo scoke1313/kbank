@@ -2,13 +2,14 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>춘식 무한 점프 - 완성본</title>
+    <title>콩콩춘식 - 0.2초의 미학</title>
     <script src="https://unpkg.com/@rive-app/canvas@2.17.3"></script>
     <style>
         body { margin: 0; background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        #game-stage { position: relative; width: 393px; height: 852px; background: #FFD400; overflow: hidden; }
-        #chunsik-node { position: absolute; width: 86px; height: 138px; z-index: 10; }
-        canvas { width: 100%; height: 100%; }
+        #game-stage { position: relative; width: 393px; height: 852px; background: #FFD400; overflow: hidden; border: 4px solid #000; }
+        #chunsik-node { position: absolute; width: 86px; height: 138px; z-index: 10; pointer-events: none; }
+        .rive-canvas { position: absolute; width: 100%; height: 100%; display: none; }
+        .active { display: block; }
         .platform { position: absolute; width: 80px; height: 15px; background: #5c3e34; border-radius: 5px; }
     </style>
 </head>
@@ -16,102 +17,118 @@
 
 <div id="game-stage">
     <div id="chunsik-node">
-        <canvas id="canvas"></canvas>
+        <canvas id="canvas-air" class="rive-canvas active"></canvas>
+        <canvas id="canvas-land" class="rive-canvas"></canvas>
     </div>
 </div>
 
 <script>
-const stage = document.getElementById('game-stage');
-const chunsik = document.getElementById('chunsik-node');
-const canvas = document.getElementById('canvas');
+const chunsikNode = document.getElementById('chunsik-node');
+const canvasAir = document.getElementById('canvas-air');
+const canvasLand = document.getElementById('canvas-land');
 
 const PHYSICS = {
     gravity: 0.8,
-    jumpPower: -22,
-    moveSpeed: 7,
+    jumpPower: -24,
+    moveSpeed: 8,
     stageWidth: 393,
-    stageHeight: 852
+    stageHeight: 852,
+    motionDuration: 12 // 0.2초 (60fps 기준 약 12프레임)
 };
 
-let posX = 150;
-let posY = 500;
-let vY = 0;
-let platforms = [];
-let keys = {};
-let riveInstance;
+let posX = 150; let posY = 600; let vY = 0;
+let platforms = []; let keys = {};
+let riveAir, riveLand;
+let motionTimer = 0; // 0.2초를 카운트할 타이머
 
-// [해결포인트 1] 리브는 게임 시작 시 '딱 한 번'만 로드합니다.
-function initGame() {
-    riveInstance = new rive.Rive({
-        src: 'kongsik_ingame_air.riv', // 파일명 다시 확인!
-        canvas: canvas,
+function initRive() {
+    riveAir = new rive.Rive({
+        src: 'kongsik_ingame_air.riv',
+        canvas: canvasAir,
         autoplay: true,
-        stateMachines: 'State Machine 1',
+        onLoad: () => { riveAir.resizeDrawingSurfaceToCanvas(); }
+    });
+
+    riveLand = new rive.Rive({
+        src: 'kongsik_ingame_land.riv',
+        canvas: canvasLand,
+        autoplay: true,
         onLoad: () => {
-            riveInstance.resizeDrawingSurfaceToCanvas();
-            console.log("리브 로드 완료 - 루프 시작");
+            riveLand.resizeDrawingSurfaceToCanvas();
             createPlatforms();
-            requestAnimationFrame(update); // 로드 완료 후 루프 딱 한 번 실행
+            requestAnimationFrame(update);
         }
     });
 }
 
-function createPlatforms() {
-    for (let i = 0; i < 7; i++) {
-        platforms.push({ x: Math.random() * 313, y: i * 120 + 100 });
+// 모션 제어 로직
+function triggerJumpMotion() {
+    motionTimer = PHYSICS.motionDuration; // 0.2초 타이머 시작
+    canvasAir.classList.add('active');
+    canvasLand.classList.remove('active');
+    if (riveAir) {
+        riveAir.scrub("State Machine 1", 0);
+        riveAir.play();
     }
-    platforms.push({ x: 150, y: 700 }); // 시작 발판
 }
 
 function update() {
-    // [해결포인트 2] 루프 안에서 new rive()를 호출하는 함수가 절대 없어야 합니다.
     vY += PHYSICS.gravity;
     posY += vY;
 
-    // 좌우 이동 및 반전 (CSS scaleX 이용)
+    // 타이머가 작동 중이면 무조건 1번 모션 유지
+    if (motionTimer > 0) {
+        motionTimer--;
+    } else {
+        // 타이머 끝났고 내려가는 중이면 2번 모션으로 전환
+        if (vY > 2) {
+            canvasLand.classList.add('active');
+            canvasAir.classList.remove('active');
+        }
+    }
+
+    // 좌우 조작
     let scale = 1;
     if (keys['ArrowLeft']) { posX -= PHYSICS.moveSpeed; scale = -1; }
     if (keys['ArrowRight']) { posX += PHYSICS.moveSpeed; scale = 1; }
 
-    // 화면 밖 무한 루프
-    if (posX < -43) posX = PHYSICS.stageWidth - 43;
-    if (posX > PHYSICS.stageWidth - 43) posX = -43;
-
     // 발판 충돌
     if (vY > 0) {
         platforms.forEach(p => {
-            if (posX + 60 > p.x && posX + 20 < p.x + 80 &&
-                posY + 130 > p.y && posY + 130 < p.y + 20) {
+            if (posX + 65 > p.x && posX + 15 < p.x + 80 &&
+                posY + 130 > p.y && posY + 130 < p.y + 25) {
                 vY = PHYSICS.jumpPower;
-                // [참고] 여기서 land.riv로 바꾸고 싶다면 파일 로드가 아니라 '상태값'만 바꿔야 안 끊깁니다.
+                triggerJumpMotion(); // 여기서 0.2초 타이머 발동
             }
         });
     }
 
-    // 카메라 (스크롤)
+    // 카메라 스크롤
     if (posY < 400) {
         let diff = 400 - posY;
         posY = 400;
         platforms.forEach(p => {
             p.y += diff;
             if (p.y > PHYSICS.stageHeight) {
-                p.y = 0;
-                p.x = Math.random() * 313;
+                p.y = 0; p.x = Math.random() * 310;
             }
         });
     }
 
-    // 바닥 추락 시 리셋
+    // 추락 리셋
     if (posY > PHYSICS.stageHeight) {
-        posY = 600;
-        vY = PHYSICS.jumpPower;
+        posY = 600; vY = PHYSICS.jumpPower;
+        triggerJumpMotion();
     }
 
-    // 최종 렌더링
-    chunsik.style.transform = `translate(${posX}px, ${posY}px) scaleX(${scale})`;
+    chunsikNode.style.transform = `translate(${posX}px, ${posY}px) scaleX(${scale})`;
     drawPlatforms();
-
     requestAnimationFrame(update);
+}
+
+function createPlatforms() {
+    for (let i = 0; i < 7; i++) platforms.push({ x: Math.random() * 310, y: i * 125 + 50 });
+    platforms.push({ x: 150, y: 750 });
 }
 
 function drawPlatforms() {
@@ -120,17 +137,15 @@ function drawPlatforms() {
     platforms.forEach(p => {
         const div = document.createElement('div');
         div.className = 'platform';
-        div.style.left = p.x + 'px';
-        div.style.top = p.y + 'px';
-        stage.appendChild(div);
+        div.style.left = p.x + 'px'; div.style.top = p.y + 'px';
+        document.getElementById('game-stage').appendChild(div);
     });
 }
 
 window.addEventListener('keydown', (e) => keys[e.code] = true);
 window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-// 실행
-initGame();
+initRive();
 </script>
 </body>
 </html>
