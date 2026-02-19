@@ -14,17 +14,26 @@
         }
 
         /* --- 상단 네비게이션 바 (지시하신 사이트와 동일하게 적용) --- */
-        #nav-bar {
-            position: absolute; top: 0; left: 0; width: 100%; max-width: 393px; height: 60px;
-            display: flex; align-items: flex-end; 
-            padding: 0 0 10px 15px; 
-            box-sizing: border-box; z-index: 110;
-        }
-        #btn-close { 
-            width: 40px; height: 40px; 
-            cursor: pointer; 
-            object-fit: contain; 
-            object-position: left bottom; 
+#nav-bar {
+    position: absolute;
+    top: 0; left: 0;
+    width: 393px;
+    height: 60px;
+    display: flex;
+    /* 엑스자가 하단에 있으므로 바닥에 밀착시켜야 보입니다 */
+    align-items: flex-end; 
+    padding: 0 0 10px 15px;
+    box-sizing: border-box;
+    z-index: 110;
+}
+
+#btn-close {
+    width: 40px;
+    height: 40px;
+    /* 이미지 하단에 있는 엑스자를 기준으로 영역을 잡습니다 */
+    object-fit: contain;
+    object-position: left bottom;
+}
         }
 
         /* UI 위치 조정 (네비게이션 바 아래) */
