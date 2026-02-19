@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 쥐돌이의 역습</title>
+    <title>콩콩춘식 - 쥐돌이의 역습 (워킹 패치)</title>
     <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -11,14 +11,14 @@
             background-image: url('bg_ingame.png'); background-repeat: repeat-y;
             background-size: 100% auto; background-color: #FFFDF5; overflow: hidden; 
         }
-        /* 춘식이 절대 비율 유지 */
         #canvas-container {
             position: absolute; width: 86px !important; height: 138px !important;
             bottom: 100px; left: 50%; margin-left: -43px; z-index: 10;
         }
         canvas { width: 100%; height: 100%; }
         .platform { position: absolute; background-size: 100% 100%; z-index: 5; }
-        .mouse-enemy { position: absolute; width: 40px; height: 30px; background-size: contain; background-repeat: no-repeat; z-index: 6; }
+        /* 쥐돌이 사이즈업 (60x45) */
+        .mouse-enemy { position: absolute; width: 60px; height: 45px; background-size: contain; background-repeat: no-repeat; z-index: 6; }
         .controller {
             position: absolute; width: 80px; height: 80px; background-size: contain;
             z-index: 50; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
@@ -40,18 +40,17 @@
 </div>
 
 <script>
-const PHYSICS = { gravity: 0.81, jumpPower: -18.9, moveSpeed: 7, stageWidth: 393, stageHeight: 852, motionHold: 12 };
+const PHYSICS = { gravity: 0.81, jumpPower: -18.9, moveSpeed: 7, motionHold: 10 };
 const PLATFORM_TYPES = { wood: ['wood_1.png', 'wood_2.png', 'wood_3.png'], block: ['block_1.png', 'block_2.png', 'block_3.png'] };
 const SIZES = [138, 98, 58];
 
 let currentY = 0, velocityY = 0, posX = 0, score = 0, bgScrollY = 0;
 let riveInstance, keys = {}, currentScale = 1;
 let platforms = [], motionTimer = 0, lastLoadedFile = "";
-let startTime = Date.now(), mouseFrame = 0;
+let startTime = Date.now(), mouseAnimFrame = 0;
 
 const btnLeft = document.getElementById('btn-left'), btnRight = document.getElementById('btn-right'), scoreEl = document.getElementById('score-board');
 
-// [통합 입력 조작] 키보드 + 버튼 동시 지원
 const setInput = (key, isDown, btn) => { 
     keys[key] = isDown; 
     if(btn) { btn.classList.toggle('ctrl-default', !isDown); btn.classList.toggle('ctrl-pressed', isDown); }
@@ -86,18 +85,16 @@ function createPlatformData(yPos) {
     const width = SIZES[sizeIdx];
     const rand = Math.random();
     const playTime = (Date.now() - startTime) / 1000;
-    
     let isBreakable = (playTime < 10) ? (rand < 0.1) : (rand > 0.25);
     const typeKey = isBreakable ? 'wood' : 'block';
     
-    // 쥐돌이 생성 확률 (발판 위에 15% 확률로 등장)
-    let hasMouse = !isBreakable && rand < 0.15; 
-
+    // 쥐돌이 등장 확률 및 워킹 데이터
+    let hasMouse = !isBreakable && rand < 0.2; 
     return {
         x: Math.random() * (393 - width), y: yPos, w: width, h: 22,
         img: PLATFORM_TYPES[typeKey][sizeIdx],
         isBreakable: isBreakable, durability: isBreakable ? 2 : 999,
-        hasMouse: hasMouse, mouseX: Math.random() * (width - 40),
+        hasMouse: hasMouse, mouseX: Math.random() * (width - 60), mouseDir: Math.random() > 0.5 ? 1 : -1,
         type: (rand > 0.9) ? 'h' : 'normal', speed: 1.5, isBroken: false
     };
 }
@@ -126,7 +123,7 @@ function update() {
 
     velocityY += PHYSICS.gravity;
     currentY += velocityY;
-    mouseFrame = (mouseFrame + 1) % 20;
+    mouseAnimFrame = (mouseAnimFrame + 1) % 20;
 
     const charFootY = 752 + currentY, charLeft = 393/2 + posX - 25;
 
@@ -134,22 +131,32 @@ function update() {
         if (p.isBroken) return;
         if (p.type === 'h') { p.x += p.speed; if (p.x <= 0 || p.x + p.w >= 393) p.speed *= -1; }
         
-        // 쥐돌이 충돌 체크
+        // 쥐돌이 워킹 로직 추가
         if (p.hasMouse) {
-            let mx = p.x + p.mouseX, my = p.y - 25;
-            if (charLeft + 50 > mx && charLeft < mx + 40 && charFootY > my && charFootY < my + 30) {
-                velocityY = -10; // 쥐돌이 닿으면 튕김
-                posX += (posX > 0 ? -20 : 20);
+            p.mouseX += p.mouseDir * 1.5;
+            if (p.mouseX <= 0 || p.mouseX + 60 >= p.w) p.mouseDir *= -1;
+            
+            let mx = p.x + p.mouseX, my = p.y - 35;
+            if (charLeft + 45 > mx && charLeft + 5 < mx + 60 && charFootY > my && charFootY < my + 45) {
+                velocityY = -8; // 쥐돌이 닿으면 살짝 튕김
+                posX += (posX > (mx - p.x) ? 30 : -30);
             }
         }
 
-        // 발판 착지
-        if (velocityY > 0 && charLeft + 50 > p.x && charLeft < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) {
-            loadRive('kongsik_ingame_land.riv');
-            velocityY = PHYSICS.jumpPower; currentY = p.y - 752; motionTimer = PHYSICS.motionHold;
+        // 발판 착지 로직 개선
+        if (velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) {
+            loadRive('kongsik_ingame_land.riv'); // 착지 모션 실행
+            velocityY = PHYSICS.jumpPower; currentY = p.y - 752; 
+            motionTimer = PHYSICS.motionHold; // 타이머 시작
             if (p.isBreakable) { p.durability--; if (p.durability <= 0) p.isBroken = true; }
         }
     });
+
+    // 타이머 끝나면 다시 공중 모션으로 복구
+    if (motionTimer > 0) {
+        motionTimer--;
+        if (motionTimer === 1) loadRive('kongsik_ingame_air.riv');
+    }
 
     if (currentY < -250) {
         let diff = -250 - currentY; currentY = -250; score += Math.floor(diff); scoreEl.innerText = score + "m";
@@ -162,7 +169,6 @@ function update() {
 
     if (charFootY > 950) initPlatforms();
 
-    // 짜브 방지 절대 변환
     document.getElementById('canvas-container').style.transform = `translate(${Math.floor(posX)}px, ${Math.floor(currentY)}px) scaleX(${currentScale})`;
     
     const stage = document.getElementById('game-stage');
@@ -175,7 +181,8 @@ function update() {
         if (p.hasMouse) {
             const m = document.createElement('div');
             m.className = 'mouse-enemy';
-            m.style.cssText = `left:${p.x + p.mouseX}px;top:${p.y - 25}px;background-image:url('mouse_walk${mouseFrame < 10 ? 1 : 2}.png')`;
+            // 쥐돌이 크기 키우고 워킹 애니메이션 및 방향 반전 적용
+            m.style.cssText = `left:${p.x + p.mouseX}px;top:${p.y - 40}px;background-image:url('mouse_walk${mouseAnimFrame < 10 ? 1 : 2}.png'); transform: scaleX(${p.mouseDir*-1})`;
             stage.appendChild(m);
         }
     });
