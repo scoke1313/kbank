@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - UI 위치 고정 버전</title>
+    <title>콩콩춘식 - UI 정밀 조정 및 효과 제거 버전</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
@@ -34,7 +34,7 @@
         }
         #btn-start:active { transform: translateX(-50%) scale(0.95); }
 
-        /* --- 인게임 UI (레이아웃 고정) --- */
+        /* --- 인게임 전용 요소 --- */
         .ingame-ui { display: none; }
 
         #bg-layer {
@@ -46,33 +46,32 @@
         #btn-close-wrap { position: absolute; top: 16px; left: 4px; width: 44px; height: 44px; z-index: 1001; cursor: pointer; }
         #btn-close-wrap img { width: 100%; height: 100%; display: block; object-fit: contain; }
 
-        /* 좌측 거리 점수 (38px) */
-        #score-board { 
-            position: absolute; top: 75px; left: 20px; 
-            font-family: 'Poetsen One', sans-serif; font-size: 38px; color: #2D1D1C; 
-            line-height: 1; z-index: 1000; 
+        .header-ui-container {
+            position: absolute; top: 75px; left: 0; width: 100%;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 20px; box-sizing: border-box; z-index: 1000;
         }
 
-        /* ★ 우측 클로버 UI: 상단 74px, 우측 20px 배치 ★ */
+        /* 좌측 점수 (38px) */
+        #score-board { font-family: 'Poetsen One', sans-serif; font-size: 38px; color: #2D1D1C; line-height: 1; }
+
+        /* ★ 클로버 UI: 위치 및 정렬 보정 ★ */
         .rate-capsule {
-            position: absolute; 
-            top: 74px; 
-            right: 20px;
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-            background: #FFFFFF; 
-            border: 2px solid #F0E0C6;
-            border-radius: 30px; 
-            width: 130px; 
-            height: 46px; 
-            box-sizing: border-box;
-            z-index: 1000;
+            display: flex; align-items: center; justify-content: center;
+            background: #FFFFFF; border: 2px solid #F0E0C6;
+            border-radius: 30px; width: 130px; height: 46px; box-sizing: border-box;
+            position: relative;
         }
-        .ui-icon { width: 25px; height: 25px; margin-right: 6px; object-fit: contain; }
+        /* 클로버 아이콘: 하단 9px, 우측 12px 이동 */
+        .ui-icon { 
+            width: 25px; height: 25px; object-fit: contain; 
+            transform: translate(12px, 9px); 
+        }
+        /* 숫자: 하단 4px, 우측 20px 이동 */
         #rate-board { 
             font-size: 20px; font-weight: 800; color: #2D1D1C; 
             font-family: 'Arial', sans-serif; line-height: 1;
+            transform: translate(20px, 4px);
         }
 
         #canvas-container { position: absolute; width: 86px !important; height: 138px !important; bottom: 100px; left: 50%; margin-left: -43px; z-index: 10; }
@@ -104,11 +103,12 @@
     <div id="btn-close-wrap" class="ingame-ui" onclick="location.reload();">
         <img src="close.png" alt="close">
     </div>
-    
-    <div id="score-board" class="ingame-ui">0m</div>
-    <div class="rate-capsule ingame-ui">
-        <img src="clover_s.png" class="ui-icon" alt="clover">
-        <span id="rate-board">0.00%</span>
+    <div class="header-ui-container ingame-ui">
+        <div id="score-board">0m</div>
+        <div class="rate-capsule">
+            <img src="clover_s.png" class="ui-icon" alt="clover">
+            <span id="rate-board">0.00%</span>
+        </div>
     </div>
     
     <div id="canvas-container" class="ingame-ui"><canvas id="canvas"></canvas></div>
