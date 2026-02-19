@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 쥐돌이 정방향 패치</title>
+    <title>콩콩춘식 - 쥐돌이 인공지능 패치</title>
     <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -17,7 +17,7 @@
         }
         canvas { width: 100%; height: 100%; }
         .platform { position: absolute; background-size: 100% 100%; z-index: 5; }
-        /* 쥐돌이 크기 1.2배 확대 */
+        /* 쥐돌이 크기 1.2배 확대 (72x54) */
         .mouse-enemy { position: absolute; width: 72px; height: 54px; background-size: contain; background-repeat: no-repeat; z-index: 6; }
         .controller {
             position: absolute; width: 80px; height: 80px; background-size: contain;
@@ -132,19 +132,26 @@ function update() {
         if (p.type === 'h') { p.x += p.speed; if (p.x <= 0 || p.x + p.w >= 393) p.speed *= -1; }
         
         if (p.hasMouse) {
-            // 대기 로직
+            // ★ 랜덤 이동 로직
             if (p.mouseWaitTimer > 0) {
                 p.mouseWaitTimer--;
             } else {
                 p.mouseX += p.mouseDir * p.mouseSpeed;
+                
+                // 1. 끝점 도달 시 랜덤 대기 (30~120프레임 = 0.5~2초)
                 if (p.mouseX <= 0 || p.mouseX + 72 >= p.w) {
                     p.mouseDir *= -1;
-                    p.mouseWaitTimer = 60; // 1초 대기
+                    p.mouseX = Math.max(0, Math.min(p.mouseX, p.w - 72));
+                    p.mouseWaitTimer = 30 + Math.floor(Math.random() * 90); 
+                }
+                // 2. 이동 중 랜덤 정지 확률 (약 0.5%)
+                else if (Math.random() < 0.005) {
+                    p.mouseWaitTimer = 20 + Math.floor(Math.random() * 40); 
                 }
             }
             
             let mx = p.x + p.mouseX, my = p.y - 35;
-            // 아슬아슬한 판정 범위 유지
+            // 아슬아슬한 판정 범위 적용 (중심부만)
             if (charLeft + 35 > mx + 20 && charLeft + 15 < mx + 52 && charFootY > my && charFootY < my + 45) {
                 velocityY = -10; 
                 posX += (posX > (mx - p.x) ? 40 : -40); 
@@ -187,7 +194,7 @@ function update() {
         if (p.hasMouse) {
             const m = document.createElement('div');
             m.className = 'mouse-enemy';
-            // ★ 가만히 있을 때(mouseWaitTimer > 0)는 mouse2.png 사용
+            // 멈춰 있을 때는 mouse2.png 사용
             const mouseImg = p.mouseWaitTimer > 0 ? 'mouse2.png' : `mouse_walk${mouseAnimFrame < 10 ? 1 : 2}.png`;
             m.style.cssText = `left:${p.x + p.mouseX}px;top:${p.y - 52}px;background-image:url('${mouseImg}'); transform: scaleX(${p.mouseDir})`;
             stage.appendChild(m);
