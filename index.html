@@ -3,45 +3,41 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 일반 점프 230px 보정판</title>
+    <title>콩콩춘식 - 밸런스 재조정 버전</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        #game-stage { position: relative; width: 393px; height: 852px; background-color: #FFFDF5; overflow: hidden; }
-
-        /* 메인 화면 */
-        #main-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('bg_main.png'); background-size: 100% 100%; z-index: 2000; display: flex; flex-direction: column; align-items: center; }
-        #main-rive-container { position: absolute; top: 0; left: 0; width: 393px; height: 852px; pointer-events: none; }
-        #btn-start { position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); width: 345px; cursor: pointer; z-index: 2100; transition: transform 0.1s; }
-
-        /* 인게임 UI */
-        .ingame-ui { display: none; }
-        #bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('bg_ingame.png'); background-repeat: repeat-y; background-size: 100% auto; z-index: 1; }
+        #game-stage { 
+            position: relative; width: 393px; height: 852px; 
+            background-image: url('bg_ingame.png'); background-repeat: repeat-y;
+            background-size: 100% auto; background-color: #FFFDF5; overflow: hidden; 
+        }
         #btn-close-wrap { position: absolute; top: 16px; left: 4px; width: 44px; height: 44px; z-index: 1001; cursor: pointer; }
         #btn-close-wrap img { width: 100%; height: 100%; display: block; object-fit: contain; }
-        .header-ui-container { position: absolute; top: 75px; left: 0; width: 100%; height: 120px; z-index: 1000; pointer-events: none; }
-        #score-board { position: absolute; top: 0; left: 20px; font-family: 'Poetsen One', sans-serif; font-size: 38px; color: #2D1D1C; line-height: 1; }
-        .rate-capsule { position: absolute; top: -1px; right: 20px; width: 130px; height: 46px; background: #FFFFFF; border: 2px solid #F0E0C6; border-radius: 30px; box-sizing: border-box; overflow: visible; }
-        .ui-icon { position: absolute; top: 0; left: 0; width: 25px; height: 25px; object-fit: contain; transform: translate(12px, 9px); }
-        #rate-board { position: absolute; top: 0; left: 25px; font-size: 20px; font-weight: 800; color: #2D1D1C; font-family: 'Arial', sans-serif; line-height: 46px; transform: translate(25px, -2px); white-space: nowrap; }
+        
+        .header-ui-container {
+            position: absolute; top: 75px; left: 0; width: 100%;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 20px; box-sizing: border-box; z-index: 1000;
+        }
+        #score-board { font-family: 'Poetsen One', sans-serif; font-size: 38px; color: #2D1D1C; line-height: 1; }
+        .rate-capsule {
+            display: flex; align-items: center; justify-content: center;
+            background: #FFFFFF; border: 2px solid #F0E0C6;
+            border-radius: 30px; width: 130px; height: 46px; box-sizing: border-box;
+        }
+        .ui-icon { width: 25px; height: 25px; margin-right: 6px; object-fit: contain; }
+        #rate-board { font-size: 20px; font-weight: 800; color: #2D1D1C; font-family: 'Arial', sans-serif; }
 
-        /* 결과 화면 */
-        #result-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255, 253, 245, 0.95); z-index: 3000; display: none; flex-direction: column; align-items: center; justify-content: center; color: #2D1D1C; font-family: 'Arial', sans-serif; }
-        #result-title { font-family: 'Poetsen One', sans-serif; font-size: 42px; margin-bottom: 30px; }
-        #final-rate-box { font-size: 32px; font-weight: 900; color: #E76A6A; margin: 25px 0; border: 3px solid #F0E0C6; padding: 15px 30px; border-radius: 20px; background: white; }
-        .btn-group { display: flex; gap: 15px; margin-top: 40px; }
-        .result-btn { width: 150px; height: 55px; border-radius: 12px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; }
-        .btn-retry { background-color: #E76A6A; color: white; }
-        .btn-main { background-color: #F0E0C6; color: #2D1D1C; }
-
-        /* 게임 요소 */
         #canvas-container { position: absolute; width: 86px !important; height: 138px !important; bottom: 100px; left: 50%; margin-left: -43px; z-index: 10; }
         canvas { width: 100%; height: 100%; }
-        .platform { position: absolute; background-size: 100% 100%; z-index: 5; }
-        .game-item { position: absolute; width: 50px; height: 50px; background-size: contain; z-index: 7; }
+        .platform { position: absolute; background-size: 100% 100%; z-index: 5; transition: opacity 0.2s; }
+        .mouse-enemy { position: absolute; width: 72px; height: 54px; background-size: contain; background-repeat: no-repeat; z-index: 6; }
+        .game-item { position: absolute; width: 50px; height: 50px; background-size: contain; background-repeat: no-repeat; z-index: 7; }
+        .pickup-effect { position: absolute; width: 160px; height: 80px; background-image: url('effect_pickup.png'); background-size: contain; background-repeat: no-repeat; z-index: 120; pointer-events: none; transition: transform 0.8s, opacity 0.8s; }
         .controller { position: absolute; width: 80px; height: 80px; background-size: contain; z-index: 50; cursor: pointer; }
         #btn-left { left: 30px; bottom: 40px; transform: scaleX(-1); }
         #btn-right { right: 30px; bottom: 40px; }
