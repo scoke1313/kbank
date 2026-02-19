@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>콩콩춘식 - 착지 강조 버전</title>
+  <title>콩콩춘식 - 착지 모션 여유 확보</title>
   <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -17,7 +17,7 @@
       width: 86px !important;
       height: 138px !important;
       pointer-events: none;
-      opacity: 0; /* 기본 투명 */
+      opacity: 0;
       z-index: 2;
     }
     .active-chun { 
@@ -84,9 +84,13 @@
   let p = { x: 197, y: 600, vy: 0 }, isRunning = false, lastDir = 1;
   let isSpringing = false; 
 
+  // --- 핵심: 랜드 모션 유지 시스템 ---
+  let landLockTimer = 0; // 이 타이머가 0보다 크면 무조건 land 모션 출력
+  const MIN_LAND_TIME = 300; // 0.3초 동안 land 모션 강제 유지 (여유 있게 조절)
+
   window.addEventListener('keydown', e => { 
-    if(e.code==='ArrowLeft'){ lastDir = -1; } // 왼쪽 응시
-    if(e.code==='ArrowRight'){ lastDir = 1; } // 오른쪽 응시
+    if(e.code==='ArrowLeft'){ lastDir = -1; } 
+    if(e.code==='ArrowRight'){ lastDir = 1; } 
   });
 
   let lastTimestamp = 0;
@@ -95,8 +99,8 @@
     const dt = timestamp - lastTimestamp;
     lastTimestamp = timestamp;
 
+    // 물리 연산 (건드리지 않음)
     if (isSpringing) {
-      // 착지 후 튕겨나가기 전 감속을 더 묵직하게 (0.5 -> 0.4)
       p.vy *= 0.4; 
       if (Math.abs(p.vy) < 0.3) {
         p.vy = jumpPower; 
@@ -107,23 +111,29 @@
     }
     p.y += p.vy;
 
-    // 바닥 충돌 시 (착지 모션 확보 시작)
+    // 바닥 충돌 시
     if (p.y > 600 && !isSpringing && p.vy > 0) {
       p.y = 600;
       isSpringing = true;
       
-      setLayer(landCanvas); // 착지 모션 레이어 ON
+      // 랜드 모션 잠금 시작
+      landLockTimer = MIN_LAND_TIME;
+      
+      setLayer(landCanvas); 
       landRive.scrub("State Machine 1", 0);
       landRive.play("State Machine 1");
     } 
 
-    // 상승 중이면서 튕겨나가는 시점부터 공중 모션 전환
-    if (!isSpringing && p.vy < 0) {
-      setLayer(airCanvas); // 공중 모션 레이어 ON
+    // 타이머 차감
+    if (landLockTimer > 0) {
+      landLockTimer -= dt;
+    } 
+    // 타이머가 끝났고, 상승 중일 때만 air로 교체
+    else if (p.vy < 0) {
+      setLayer(airCanvas); 
       airRive.play("State Machine 1");
     }
 
-    // 위치 업데이트 (Z-index 스위칭 덕분에 깜빡임 없음)
     [landCanvas, airCanvas].forEach(c => {
       c.style.left = (p.x - 43) + 'px';
       c.style.top = (p.y - 69) + 'px';
