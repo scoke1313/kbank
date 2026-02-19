@@ -2,150 +2,104 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 0.2초의 미학</title>
-    <script src="https://unpkg.com/@rive-app/canvas@2.17.3"></script>
+    <title>춘식 점프 물리 로직</title>
+    <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
-        body { margin: 0; background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        #game-stage { position: relative; width: 393px; height: 852px; background: #FFD400; overflow: hidden; border: 4px solid #000; }
-        #chunsik-node { position: absolute; width: 86px; height: 138px; z-index: 10; pointer-events: none; }
-        .rive-canvas { position: absolute; width: 100%; height: 100%; display: none; }
-        .active { display: block; }
-        .platform { position: absolute; width: 80px; height: 15px; background: #5c3e34; border-radius: 5px; }
+        body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        /* 요청하신 393x852 사이즈 고정 */
+        #game-stage { 
+            position: relative; 
+            width: 393px; 
+            height: 852px; 
+            background: #fff; 
+            overflow: hidden; 
+        }
+        /* 캐릭터 사이즈 86x138 고정 */
+        #canvas-container {
+            position: absolute;
+            width: 86px;
+            height: 138px;
+            bottom: 100px; /* 바닥에서 100px 위를 시작점으로 설정 */
+            left: 50%;
+            margin-left: -43px; /* 가로 중앙 정렬 */
+        }
+        canvas { width: 100%; height: 100%; }
     </style>
 </head>
 <body>
 
 <div id="game-stage">
-    <div id="chunsik-node">
-        <canvas id="canvas-air" class="rive-canvas active"></canvas>
-        <canvas id="canvas-land" class="rive-canvas"></canvas>
+    <div id="canvas-container">
+        <canvas id="canvas"></canvas>
     </div>
 </div>
 
 <script>
-const chunsikNode = document.getElementById('chunsik-node');
-const canvasAir = document.getElementById('canvas-air');
-const canvasLand = document.getElementById('canvas-land');
-
+// --- 물리 파라미터 (속도와 시간 중심) ---
 const PHYSICS = {
-    gravity: 0.8,
-    jumpPower: -24,
-    moveSpeed: 8,
-    stageWidth: 393,
-    stageHeight: 852,
-    motionDuration: 12 // 0.2초 (60fps 기준 약 12프레임)
+    gravity: 0.9,       // 중력 (클수록 빨리 떨어짐)
+    jumpPower: -18,     // 도약 속도 (클수록 높이 뜀)
+    groundY: 0,         // 바닥 기준
 };
 
-let posX = 150; let posY = 600; let vY = 0;
-let platforms = []; let keys = {};
-let riveAir, riveLand;
-let motionTimer = 0; // 0.2초를 카운트할 타이머
+let currentY = 0;
+let velocityY = 0;
+let isJumping = true; // 시작부터 점프 상태로 설정
+let riveInstance;
 
-function initRive() {
-    riveAir = new rive.Rive({
-        src: 'kongsik_ingame_air.riv',
-        canvas: canvasAir,
+// Rive 초기화 함수 (파일 교체용)
+function loadRive(fileName) {
+    if (riveInstance) riveInstance.cleanup();
+    
+    riveInstance = new rive.Rive({
+        src: fileName,
+        canvas: document.getElementById('canvas'),
         autoplay: true,
-        onLoad: () => { riveAir.resizeDrawingSurfaceToCanvas(); }
-    });
-
-    riveLand = new rive.Rive({
-        src: 'kongsik_ingame_land.riv',
-        canvas: canvasLand,
-        autoplay: true,
+        stateMachines: 'State Machine 1',
         onLoad: () => {
-            riveLand.resizeDrawingSurfaceToCanvas();
-            createPlatforms();
-            requestAnimationFrame(update);
+            riveInstance.resizeDrawingSurfaceToCanvas();
         }
     });
 }
 
-// 모션 제어 로직
-function triggerJumpMotion() {
-    motionTimer = PHYSICS.motionDuration; // 0.2초 타이머 시작
-    canvasAir.classList.add('active');
-    canvasLand.classList.remove('active');
-    if (riveAir) {
-        riveAir.scrub("State Machine 1", 0);
-        riveAir.play();
-    }
-}
+// 최초 실행: 공중(대기) 모션 로드
+loadRive('kongsik_ingame_air.riv');
 
 function update() {
-    vY += PHYSICS.gravity;
-    posY += vY;
+    if (isJumping) {
+        velocityY += PHYSICS.gravity;
+        currentY += velocityY;
 
-    // 타이머가 작동 중이면 무조건 1번 모션 유지
-    if (motionTimer > 0) {
-        motionTimer--;
-    } else {
-        // 타이머 끝났고 내려가는 중이면 2번 모션으로 전환
-        if (vY > 2) {
-            canvasLand.classList.add('active');
-            canvasAir.classList.remove('active');
+        // 바닥 도착 판정
+        if (currentY >= PHYSICS.groundY) {
+            currentY = PHYSICS.groundY;
+            
+            // [수정] 멈추지 않고 즉시 PHYSICS.jumpPower만큼 다시 속도를 부여 (자동 점프)
+            velocityY = PHYSICS.jumpPower;
+            isJumping = true; 
+            
+            // 바닥에 닿는 순간 착지 모션을 아주 잠깐 보여주고 싶다면 여기서 교체 루틴을 짜겠지만,
+            // 일단 원본 흐름대로 튕겨 나가는 시점에 air 모션을 다시 확실히 로드하게 두었습니다.
+            loadRive('kongsik_ingame_air.riv');
         }
+
+        // 캐릭터 위치(Y) 업데이트
+        document.getElementById('canvas-container').style.transform = `translateY(${currentY}px)`;
     }
-
-    // 좌우 조작
-    let scale = 1;
-    if (keys['ArrowLeft']) { posX -= PHYSICS.moveSpeed; scale = -1; }
-    if (keys['ArrowRight']) { posX += PHYSICS.moveSpeed; scale = 1; }
-
-    // 발판 충돌
-    if (vY > 0) {
-        platforms.forEach(p => {
-            if (posX + 65 > p.x && posX + 15 < p.x + 80 &&
-                posY + 130 > p.y && posY + 130 < p.y + 25) {
-                vY = PHYSICS.jumpPower;
-                triggerJumpMotion(); // 여기서 0.2초 타이머 발동
-            }
-        });
-    }
-
-    // 카메라 스크롤
-    if (posY < 400) {
-        let diff = 400 - posY;
-        posY = 400;
-        platforms.forEach(p => {
-            p.y += diff;
-            if (p.y > PHYSICS.stageHeight) {
-                p.y = 0; p.x = Math.random() * 310;
-            }
-        });
-    }
-
-    // 추락 리셋
-    if (posY > PHYSICS.stageHeight) {
-        posY = 600; vY = PHYSICS.jumpPower;
-        triggerJumpMotion();
-    }
-
-    chunsikNode.style.transform = `translate(${posX}px, ${posY}px) scaleX(${scale})`;
-    drawPlatforms();
     requestAnimationFrame(update);
 }
 
-function createPlatforms() {
-    for (let i = 0; i < 7; i++) platforms.push({ x: Math.random() * 310, y: i * 125 + 50 });
-    platforms.push({ x: 150, y: 750 });
-}
+// 입력 감지 (이제 스페이스 없이도 update에서 자동 실행되지만 원본 구조상 유지)
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && !isJumping) {
+        isJumping = true;
+        velocityY = PHYSICS.jumpPower;
+        loadRive('kongsik_ingame_air.riv');
+    }
+});
 
-function drawPlatforms() {
-    const existing = document.querySelectorAll('.platform');
-    existing.forEach(e => e.remove());
-    platforms.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'platform';
-        div.style.left = p.x + 'px'; div.style.top = p.y + 'px';
-        document.getElementById('game-stage').appendChild(div);
-    });
-}
-
-window.addEventListener('keydown', (e) => keys[e.code] = true);
-window.addEventListener('keyup', (e) => keys[e.code] = false);
-
-initRive();
+update();
 </script>
+
 </body>
 </html>
