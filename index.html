@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>콩콩춘식 - 모션 고정 버전</title>
+  <title>콩콩춘식 - 깜빡임 해결 완료</title>
   <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -11,15 +11,21 @@
     #game-container{position:relative;width:480px;height:800px;background:linear-gradient(#A1C4FD,#C2E9FB);overflow:hidden}
     #bgCanvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1}
 
-    /* 춘식이 필승 비법: 캔버스 2개를 완전히 겹침 */
+    /* 필승 비법 업그레이드: 투명도로 깜빡임 방지 */
     .chun-layer {
       position: absolute;
-      z-index: 2;
       width: 86px !important;
       height: 138px !important;
       pointer-events: none;
-      display: none;
+      opacity: 0; /* 평소엔 숨김 */
+      transition: opacity 0.05s; /* 아주 미세한 페이드로 깜빡임 방지 */
     }
+    /* 활성화된 캐릭터만 보이게 설정 */
+    .active-chun {
+      opacity: 1 !important;
+      z-index: 3 !important;
+    }
+    
     .overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,0.6);color:#fff;text-align:center;padding:24px}
     .btn{margin-top:18px;padding:14px 40px;font-size:18px;font-weight:1000;background:#FEE500;color:#111827;border:0;border-radius:999px;cursor:pointer}
     .hidden{display:none!important}
@@ -46,10 +52,9 @@
 
   bgCanvas.width = 480; bgCanvas.height = 800;
 
-  let landRive, airRive, activeCanvas = null;
+  let landRive, airRive;
   let landReady = false, airReady = false;
 
-  // 1. 초기화 로직 (여기서부터 절대 수정하지 않음)
   function init() {
     landRive = new rive.Rive({
       src: 'kongsik_ingame_land.riv',
@@ -79,10 +84,8 @@
 
   let jumpPower = -15, gravity = 0.6; 
   let p = { x: 197, y: 600, vy: jumpPower }, isRunning = false, lastDir = 1;
-  
-  // 2. 착지 모션 확보 타이머 (사용자님 요청 사항)
   let landAnimationTimer = 0; 
-  const LAND_DURATION = 150; // 0.15초 동안 착지 모션 유지 (값 조절 가능)
+  const LAND_DURATION = 150; 
 
   window.addEventListener('keydown', e => { 
     if(e.code==='ArrowLeft'){ lastDir=1; } 
@@ -97,38 +100,39 @@
 
     p.vy += gravity; p.y += p.vy;
 
-    // 바닥/발판 충돌 시 처리
     if (p.y > 600) {
       p.y = 600; p.vy = jumpPower;
-      landAnimationTimer = LAND_DURATION; // 타이머 가동
+      landAnimationTimer = LAND_DURATION;
       
-      showCanvas(landCanvas);
+      // 착지 레이어 활성화
+      setLayer(landCanvas);
       landRive.scrub("State Machine 1", 0);
       landRive.play("State Machine 1");
     } 
 
-    // 타이머 확인 후 모션 전환 로직
     if (landAnimationTimer > 0) {
       landAnimationTimer -= dt;
     } else if (p.vy < 0) {
-      showCanvas(airCanvas);
+      // 공중 레이어 활성화
+      setLayer(airCanvas);
       airRive.play("State Machine 1");
     }
 
-    if(activeCanvas) {
-      activeCanvas.style.left = (p.x - 43) + 'px';
-      activeCanvas.style.top = (p.y - 69) + 'px';
-      activeCanvas.style.transform = `scaleX(${lastDir})`;
-    }
+    // 위치 업데이트 (두 캔버스 동시 이동)
+    [landCanvas, airCanvas].forEach(c => {
+      c.style.left = (p.x - 43) + 'px';
+      c.style.top = (p.y - 69) + 'px';
+      c.style.transform = `scaleX(${lastDir})`;
+    });
+
     requestAnimationFrame(loop);
   }
 
-  function showCanvas(target) {
-    if (activeCanvas === target) return;
-    landCanvas.style.display = 'none';
-    airCanvas.style.display = 'none';
-    target.style.display = 'block';
-    activeCanvas = target;
+  // 깜빡임 방지 핵심 함수: CSS 클래스만 교체
+  function setLayer(active) {
+    landCanvas.classList.remove('active-chun');
+    airCanvas.classList.remove('active-chun');
+    active.classList.add('active-chun');
   }
 
   btnStart.onclick = () => {
