@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>콩콩춘식 - 탄력 점프 업데이트</title>
+  <title>콩콩춘식 - 착지 강조 버전</title>
   <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -11,15 +11,19 @@
     #game-container{position:relative;width:480px;height:800px;background:linear-gradient(#A1C4FD,#C2E9FB);overflow:hidden}
     #bgCanvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1}
 
+    /* 필승 비법: 독립 캔버스 + 투명도 스위칭 */
     .chun-layer {
       position: absolute;
       width: 86px !important;
       height: 138px !important;
       pointer-events: none;
-      opacity: 0;
+      opacity: 0; /* 기본 투명 */
       z-index: 2;
     }
-    .active-chun { opacity: 1 !important; z-index: 3 !important; }
+    .active-chun { 
+      opacity: 1 !important; 
+      z-index: 3 !important; 
+    }
     
     .overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,0.6);color:#fff;text-align:center;padding:24px}
     .btn{margin-top:18px;padding:14px 40px;font-size:18px;font-weight:1000;background:#FEE500;color:#111827;border:0;border-radius:999px;cursor:pointer}
@@ -76,14 +80,13 @@
   }
   init();
 
-  // --- 탄력 물리 설정 ---
   let jumpPower = -15, gravity = 0.65; 
   let p = { x: 197, y: 600, vy: 0 }, isRunning = false, lastDir = 1;
-  let isSpringing = false; // 띠용(압축) 상태 플래그
+  let isSpringing = false; 
 
   window.addEventListener('keydown', e => { 
-    if(e.code==='ArrowLeft'){ lastDir = -1; } 
-    if(e.code==='ArrowRight'){ lastDir = 1; } 
+    if(e.code==='ArrowLeft'){ lastDir = -1; } // 왼쪽 응시
+    if(e.code==='ArrowRight'){ lastDir = 1; } // 오른쪽 응시
   });
 
   let lastTimestamp = 0;
@@ -92,11 +95,11 @@
     const dt = timestamp - lastTimestamp;
     lastTimestamp = timestamp;
 
-    // 물리 로직: 띠용 상태일 때는 하강 속도를 급격히 줄여 탄성 구현
     if (isSpringing) {
-      p.vy *= 0.5; // 속도를 반으로 줄여 부드럽게 감속
-      if (Math.abs(p.vy) < 0.5) {
-        p.vy = jumpPower; // 일정 속도 이하로 떨어지면 튕겨나감
+      // 착지 후 튕겨나가기 전 감속을 더 묵직하게 (0.5 -> 0.4)
+      p.vy *= 0.4; 
+      if (Math.abs(p.vy) < 0.3) {
+        p.vy = jumpPower; 
         isSpringing = false;
       }
     } else {
@@ -104,22 +107,23 @@
     }
     p.y += p.vy;
 
-    // 바닥 충돌 시 띠용 시작
+    // 바닥 충돌 시 (착지 모션 확보 시작)
     if (p.y > 600 && !isSpringing && p.vy > 0) {
       p.y = 600;
       isSpringing = true;
       
-      setLayer(landCanvas);
+      setLayer(landCanvas); // 착지 모션 레이어 ON
       landRive.scrub("State Machine 1", 0);
       landRive.play("State Machine 1");
     } 
 
-    // 공중 모션 전환 타이밍
+    // 상승 중이면서 튕겨나가는 시점부터 공중 모션 전환
     if (!isSpringing && p.vy < 0) {
-      setLayer(airCanvas);
+      setLayer(airCanvas); // 공중 모션 레이어 ON
       airRive.play("State Machine 1");
     }
 
+    // 위치 업데이트 (Z-index 스위칭 덕분에 깜빡임 없음)
     [landCanvas, airCanvas].forEach(c => {
       c.style.left = (p.x - 43) + 'px';
       c.style.top = (p.y - 69) + 'px';
