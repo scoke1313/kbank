@@ -2,101 +2,153 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>춘식 점프 물리 로직</title>
+    <title>콩콩춘식 무한 점프</title>
     <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
-        body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        /* 요청하신 393x852 사이즈 고정 */
+        body { margin: 0; background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; }
         #game-stage { 
             position: relative; 
             width: 393px; 
             height: 852px; 
-            background: #fff; 
+            background: #FFD400; /* 카카오 노란색 */
             overflow: hidden; 
         }
-        /* 캐릭터 사이즈 86x138 고정 */
-        #canvas-container {
+        /* 캐릭터 사이즈 고정 및 좌우 반전용 style */
+        #chunsik-node {
             position: absolute;
             width: 86px;
             height: 138px;
-            bottom: 100px; /* 바닥에서 100px 위를 시작점으로 설정 */
-            left: 50%;
-            margin-left: -43px; /* 가로 중앙 정렬 */
+            z-index: 10;
         }
         canvas { width: 100%; height: 100%; }
+        .platform {
+            position: absolute;
+            width: 80px;
+            height: 15px;
+            background: #5c3e34;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
 
 <div id="game-stage">
-    <div id="canvas-container">
+    <div id="chunsik-node">
         <canvas id="canvas"></canvas>
     </div>
 </div>
 
 <script>
-// --- 물리 파라미터 (속도와 시간 중심) ---
+const stage = document.getElementById('game-stage');
+const chunsik = document.getElementById('chunsik-node');
+const canvas = document.getElementById('canvas');
+
+// --- 환경 설정 (수정 포인트) ---
 const PHYSICS = {
-    gravity: 0.9,       // 중력 (클수록 빨리 떨어짐)
-    jumpPower: -18,     // 도약 속도 (클수록 높이 뜀)
-    groundY: 0,         // 바닥 기준
+    gravity: 0.7,
+    jumpPower: -22, // 기존보다 높게 설정
+    moveSpeed: 5,
+    stageWidth: 393,
+    stageHeight: 852
 };
 
-let currentY = 0;
-let velocityY = 0;
-let isJumping = false;
+let posX = PHYSICS.stageWidth / 2 - 43;
+let posY = 600;
+let vY = 0;
+let platforms = [];
+let keys = {};
 let riveInstance;
 
-// Rive 초기화 함수 (파일 교체용)
-function loadRive(fileName) {
-    if (riveInstance) riveInstance.cleanup();
-    
+// 1. Rive 초기화
+function initRive() {
     riveInstance = new rive.Rive({
-        src: fileName,
-        canvas: document.getElementById('canvas'),
+        src: 'kongsik_ingame_air.riv', 
+        canvas: canvas,
         autoplay: true,
         stateMachines: 'State Machine 1',
-        onLoad: () => {
-            riveInstance.resizeDrawingSurfaceToCanvas();
-        }
+        onLoad: () => { riveInstance.resizeDrawingSurfaceToCanvas(); }
     });
 }
 
-// 최초 실행: 공중(대기) 모션 로드
-loadRive('kongsik_ingame_air.riv');
-
-function update() {
-    if (isJumping) {
-        velocityY += PHYSICS.gravity;
-        currentY += velocityY;
-
-        // 바닥 도착 판정
-        if (currentY >= PHYSICS.groundY) {
-            currentY = PHYSICS.groundY;
-            velocityY = 0;
-            isJumping = false;
-            
-            // 착지 모션 파일로 교체
-            loadRive('kongsik_ingame_land.riv');
-        }
-
-        // 캐릭터 위치(Y) 업데이트
-        document.getElementById('canvas-container').style.transform = `translateY(${currentY}px)`;
+// 2. 발판 생성
+function createPlatforms() {
+    for (let i = 0; i < 7; i++) {
+        platforms.push({
+            x: Math.random() * (PHYSICS.stageWidth - 80),
+            y: i * 130 + 100
+        });
     }
+}
+
+// 3. 메인 게임 루프
+function update() {
+    // 자동 점프 물리
+    vY += PHYSICS.gravity;
+    posY += vY;
+
+    // 좌우 이동 및 반전
+    if (keys['ArrowLeft']) {
+        posX -= PHYSICS.moveSpeed;
+        chunsik.style.transform = `translate(${posX}px, ${posY}px) scaleX(-1)`; // 왼쪽 반전
+    } else if (keys['ArrowRight']) {
+        posX += PHYSICS.moveSpeed;
+        chunsik.style.transform = `translate(${posX}px, ${posY}px) scaleX(1)`;  // 오른쪽 원본
+    } else {
+        chunsik.style.transform = `translate(${posX}px, ${posY}px)`;
+    }
+
+    // 화면 밖으로 나가는 것 방지
+    if (posX < -43) posX = PHYSICS.stageWidth - 43;
+    if (posX > PHYSICS.stageWidth - 43) posX = -43;
+
+    // 발판 충돌 판정 및 자동 점프
+    if (vY > 0) { // 내려올 때만 밟음
+        platforms.forEach(p => {
+            if (posX + 60 > p.x && posX + 20 < p.x + 80 &&
+                posY + 138 > p.y && posY + 138 < p.y + 20) {
+                vY = PHYSICS.jumpPower; // 자동 재점프
+                // 착지 모션 필요시 여기서 loadRive 교체 가능
+            }
+        });
+    }
+
+    // 발판 무한 생성 (화면 아래로 내려가면 위로 재배치)
+    platforms.forEach(p => {
+        if (posY < 400) { // 캐릭터가 높이 올라가면 발판을 상대적으로 내림
+            p.y -= vY; 
+        }
+        if (p.y > PHYSICS.stageHeight) {
+            p.y = 0;
+            p.x = Math.random() * (PHYSICS.stageWidth - 80);
+        }
+    });
+
+    if (posY < 400) posY = 400; // 카메라 고정 효과
+
+    drawPlatforms();
     requestAnimationFrame(update);
 }
 
-// 입력 감지
-window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && !isJumping) {
-        isJumping = true;
-        velocityY = PHYSICS.jumpPower;
-        
-        // 점프 시작 시 공중 모션 파일로 교체
-        loadRive('kongsik_ingame_air.riv');
-    }
-});
+function drawPlatforms() {
+    // 기존 발판 제거 후 다시 그리기
+    const existing = document.querySelectorAll('.platform');
+    existing.forEach(e => e.remove());
+    
+    platforms.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'platform';
+        div.style.left = p.x + 'px';
+        div.style.top = p.y + 'px';
+        stage.appendChild(div);
+    });
+}
 
+// 4. 입력 핸들러
+window.addEventListener('keydown', (e) => keys[e.code] = true);
+window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+initRive();
+createPlatforms();
 update();
 </script>
 
