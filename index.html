@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 최종 완성형</title>
+    <title>콩콩춘식 - 수치 정밀 고정 버전</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
@@ -11,37 +11,16 @@
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
         #game-stage { position: relative; width: 393px; height: 852px; background-color: #FFFDF5; overflow: hidden; }
 
-        /* 메인 화면 */
-        #main-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('bg_main.png'); background-size: 100% 100%; z-index: 2000; display: flex; flex-direction: column; align-items: center; }
-        #main-rive-container { position: absolute; top: 0; left: 0; width: 393px; height: 852px; pointer-events: none; }
-        #btn-start { position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); width: 345px; cursor: pointer; z-index: 2100; transition: transform 0.1s; }
-
         /* 인게임 UI */
         .ingame-ui { display: none; }
         #bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('bg_ingame.png'); background-repeat: repeat-y; background-size: 100% auto; z-index: 1; }
         #btn-close-wrap { position: absolute; top: 16px; left: 4px; width: 44px; height: 44px; z-index: 1001; cursor: pointer; }
         #btn-close-wrap img { width: 44px !important; height: 44px !important; display: block; }
-        .header-ui-container { position: absolute; top: 75px; left: 0; width: 100%; height: 120px; z-index: 1000; pointer-events: none; }
-        #score-board { position: absolute; top: 0; left: 20px; font-family: 'Poetsen One', sans-serif; font-size: 38px; color: #2D1D1C; line-height: 1; }
+        #score-board { position: absolute; top: 75px; left: 20px; font-family: 'Poetsen One', sans-serif; font-size: 38px; color: #2D1D1C; line-height: 1; z-index: 1000; }
         
-        .rate-capsule { position: absolute; top: -1px; right: 20px; width: 130px; height: 46px; background: #FFFFFF; border: 2px solid #F0E0C6; border-radius: 30px; box-sizing: border-box; overflow: visible; }
+        .rate-capsule { position: absolute; top: 74px; right: 20px; width: 130px; height: 46px; background: #FFFFFF; border: 2px solid #F0E0C6; border-radius: 30px; box-sizing: border-box; z-index: 1000; }
         .ui-icon { position: absolute; top: 9px; left: 12px; width: 25px; height: 25px; object-fit: contain; }
         #rate-board { position: absolute; top: 13px; left: 45px; font-size: 20px; font-weight: 800; color: #2D1D1C; font-family: 'Arial', sans-serif; line-height: 1; transform: translateY(-1px); white-space: nowrap; }
-
-        /* 결과 화면 팝업 */
-        #result-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); z-index: 3000; display: none; flex-direction: column; align-items: center; justify-content: center; }
-        .result-popup { width: 345px; background: white; border-radius: 40px; padding: 40px 20px 30px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; }
-        .res-title { font-size: 18px; font-weight: 800; color: #2D1D1C; margin-bottom: 15px; }
-        .res-final-rate { font-size: 64px; font-weight: 900; color: #E76A6A; margin-bottom: 25px; }
-        .res-detail-row { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 12px; width: 210px; }
-        .res-detail-icon { width: 24px; height: 24px; margin-right: 12px; object-fit: contain; }
-        .res-detail-text { font-size: 18px; font-weight: 700; color: #2D1D1C; }
-        .res-character { width: 140px; margin: 30px 0 20px; }
-        .res-comment { font-size: 16px; font-weight: 800; color: #2D1D1C; line-height: 1.4; }
-        .res-btn-group { display: flex; gap: 10px; width: 345px; margin-top: 20px; }
-        .res-btn { flex: 1; height: 65px; border-radius: 20px; border: none; font-size: 18px; font-weight: 800; cursor: pointer; }
-        .btn-retry { background: #333; color: white; }
-        .btn-saving { background: #E76A6A; color: white; }
 
         /* 게임 요소 */
         #canvas-container { position: absolute; width: 86px !important; height: 138px !important; bottom: 100px; left: 50%; margin-left: -43px; z-index: 10; }
@@ -54,118 +33,99 @@
         #btn-right { right: 30px; bottom: 40px; }
         .ctrl-default { background-image: url('controller_Default.png'); }
         .ctrl-pressed { background-image: url('controller_pressed.png'); }
+
+        /* 결과 화면 */
+        #result-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); z-index: 3000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .result-popup { width: 345px; background: white; border-radius: 40px; padding: 40px 20px 30px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; }
+        .res-final-rate { font-size: 64px; font-weight: 900; color: #E76A6A; margin-bottom: 25px; }
+        .res-btn-group { display: flex; gap: 10px; width: 345px; margin-top: 20px; }
+        .res-btn { flex: 1; height: 65px; border-radius: 20px; border: none; font-size: 18px; font-weight: 800; cursor: pointer; }
     </style>
 </head>
 <body>
 <div id="game-stage">
-    <div id="main-screen">
-        <div id="main-rive-container"><canvas id="main-rive-canvas"></canvas></div>
-        <img src="btn_start.png" id="btn-start" onclick="startGame()">
+    <div id="main-screen" style="position:absolute; top:0; left:0; width:100%; height:100%; background-image:url('bg_main.png'); background-size:100% 100%; z-index:2000; display:flex; flex-direction:column; align-items:center;">
+        <div id="main-rive-container" style="position:absolute; top:0; left:0; width:393px; height:852px; pointer-events:none;"><canvas id="main-rive-canvas"></canvas></div>
+        <img src="btn_start.png" id="btn-start" style="position:absolute; bottom:50px; left:50%; transform:translateX(-50%); width:345px; cursor:pointer; z-index:2100;" onclick="startGame()">
     </div>
     <div id="bg-layer" class="ingame-ui"></div>
     <div id="btn-close-wrap" class="ingame-ui" onclick="location.reload();"><img src="close.png"></div>
-    <div class="header-ui-container ingame-ui">
-        <div id="score-board">0m</div>
-        <div class="rate-capsule"><img src="clover_s.png" class="ui-icon"><span id="rate-board">0.00%</span></div>
-    </div>
+    <div id="score-board" class="ingame-ui">0m</div>
+    <div class="rate-capsule ingame-ui"><img src="clover_s.png" class="ui-icon"><span id="rate-board">0.00%</span></div>
     <div id="canvas-container" class="ingame-ui"><canvas id="canvas"></canvas></div>
     <div id="btn-left" class="controller ctrl-default ingame-ui"></div>
     <div id="btn-right" class="controller ctrl-default ingame-ui"></div>
     <div id="result-screen">
         <div class="result-popup">
-            <div class="res-title">금리 점프 챌린지 결과</div>
             <div class="res-final-rate" id="res-total-rate">0.00%</div>
-            <div class="res-detail-row"><img src="pogo_s.png" class="res-detail-icon"><div class="res-detail-text">기본 금리 <span id="res-dist-rate">0.00</span>%</div></div>
-            <div class="res-detail-row"><img src="clover_s.png" class="res-detail-icon"><div class="res-detail-text">클로버 획득 <span id="res-clover-rate">0.0</span>%</div></div>
-            <img src="result_tip.png" class="res-character">
-            <div class="res-comment">꽤 괜찮은 금리네요!<br>이 금리로 적금을 만들까요?</div>
+            <img src="result_tip.png" style="width:140px; margin:20px 0;">
+            <div style="font-weight:800;">이 금리로 적금을 만들까요?</div>
         </div>
         <div class="res-btn-group">
-            <button class="res-btn btn-retry" onclick="startGame()">다시하기</button>
-            <button class="res-btn btn-saving" onclick="location.reload()">적금 만들기</button>
+            <button class="res-btn" style="background:#333; color:white;" onclick="startGame()">다시하기</button>
+            <button class="res-btn" style="background:#E76A6A; color:white;" onclick="location.reload()">적금 만들기</button>
         </div>
     </div>
 </div>
 
 <script>
+// ★ 수치 절대 고정 ★
 const PHYSICS = { gravity: 0.81, jumpPower: -19.3, superJumpPower: -68, moveSpeed: 7 }; 
 const SIZES = [138, 98, 58]; 
-let score = 0, cloverCount = 0, currentY = 0, velocityY = 0, posX = 0, bgScrollY = 0;
-let riveInstance, mainRiveInstance, keys = {}, currentScale = 1, platforms = [], lastLoadedFile = "", isGameRunning = false, mouseAnimFrame = 0;
+let score = 0, cloverCount = 0, currentY = 0, velocityY = 0, posX = 0, platforms = [], isGameRunning = false, mouseAnimFrame = 0;
 
-const scoreEl = document.getElementById('score-board'), rateEl = document.getElementById('rate-board'), canvasCont = document.getElementById('canvas-container');
-
-function loadMainRive() { mainRiveInstance = new rive.Rive({ src: 'kongsik.riv', canvas: document.getElementById('main-rive-canvas'), autoplay: true, stateMachines: 'State Machine 1', onLoad: () => mainRiveInstance.resizeDrawingSurfaceToCanvas() }); }
-function startGame() { document.getElementById('main-screen').style.display = 'none'; document.getElementById('result-screen').style.display = 'none'; document.querySelectorAll('.ingame-ui').forEach(el => el.style.display = 'block'); isGameRunning = true; cloverCount = 0; initPlatforms(); loadRive('kongsik_ingame_air.riv'); }
-function showResult() { isGameRunning = false; const finalDist = Math.floor(score * 0.01); const dRate = finalDist * 0.01; const cRate = cloverCount * 0.1; document.getElementById('res-total-rate').innerText = (dRate + cRate).toFixed(2) + "%"; document.getElementById('res-dist-rate').innerText = dRate.toFixed(2); document.getElementById('res-clover-rate').innerText = cRate.toFixed(1); document.querySelectorAll('.ingame-ui').forEach(el => el.style.display = 'none'); document.getElementById('result-screen').style.display = 'flex'; }
-
-const setInput = (key, isDown, btn) => { keys[key] = isDown; if(btn) { btn.classList.toggle('ctrl-default', !isDown); btn.classList.toggle('ctrl-pressed', isDown); }};
-window.addEventListener('keydown', (e) => { if (e.code === 'ArrowLeft') setInput('ArrowLeft', true, document.getElementById('btn-left')); if (e.code === 'ArrowRight') setInput('ArrowRight', true, document.getElementById('btn-right')); });
-window.addEventListener('keyup', (e) => { if (e.code === 'ArrowLeft') setInput('ArrowLeft', false, document.getElementById('btn-left')); if (e.code === 'ArrowRight') setInput('ArrowRight', false, document.getElementById('btn-right')); });
-
-function loadRive(f) { if (lastLoadedFile === f) return; lastLoadedFile = f; if (riveInstance) riveInstance.cleanup(); riveInstance = new rive.Rive({ src: f, canvas: document.getElementById('canvas'), autoplay: true, stateMachines: 'State Machine 1', onLoad: () => riveInstance.resizeDrawingSurfaceToCanvas() }); }
+function startGame() { document.getElementById('main-screen').style.display='none'; document.getElementById('result-screen').style.display='none'; document.querySelectorAll('.ingame-ui').forEach(el=>el.style.display='block'); isGameRunning=true; initPlatforms(); loadRive('kongsik_ingame_air.riv'); }
+function loadMainRive() { new rive.Rive({ src: 'kongsik.riv', canvas: document.getElementById('main-rive-canvas'), autoplay: true }); }
 
 function createPlatformData(y) {
     let distM = Math.floor(score * 0.01), rand = Math.random();
-    let isBreakable = (rand < 0.15 + (Math.min(distM, 500) / 500) * 0.75);
-    let sIdx = distM < 100 ? Math.floor(rand * 2) : Math.floor(rand * 3);
-    const width = SIZES[sIdx];
+    let width = SIZES[distM < 100 ? 0 : (rand < 0.5 ? 1 : 2)];
     let canHaveMouse = (width >= 98) && (rand < 0.2); 
-    let itemType = (!canHaveMouse && rand > 0.8) ? (Math.random() > 0.6 ? 'gold' : 'clover') : null;
-    return { x: Math.random() * (393 - width), y, baseY: y, w: width, h: 22, img: isBreakable ? 'wood_1.png' : 'block_1.png', isBreakable, item: itemType, itemCollected: false, hasMouse: canHaveMouse, mouseX: Math.random() * (width - 72), mouseDir: Math.random() > 0.5 ? 1 : -1, mouseSpeed: 0.8 + Math.random() * 0.6, mouseVY: 0, mouseYOffset: -52, isBroken: false };
+    return { x: Math.random() * (393 - width), y, baseY: y, w: width, h: 22, img: 'block_1.png', hasMouse: canHaveMouse, mouseX: Math.random() * (width - 72), mouseDir: 1, mouseSpeed: 1, isBroken: false };
 }
 
-function initPlatforms() { score = 0; currentY = 0; velocityY = 0; posX = 0; scoreEl.innerText = "0m"; rateEl.innerText = "0.00%"; platforms = []; let lastY = 752; for (let i = 0; i < 7; i++) { lastY -= (110 + Math.random() * 100); platforms.push(createPlatformData(lastY)); } platforms.push({ x: 127, y: 752, baseY: 752, w: 138, h: 22, img: 'block_1.png', isBreakable: false, type: 'normal', isBroken: false }); }
+// ★ 발판 간격 200px 미만(최대 190px) 고정 ★
+function initPlatforms() { 
+    score = 0; currentY = 0; velocityY = 0; posX = 0; platforms = []; 
+    let lastY = 752; 
+    for (let i = 0; i < 7; i++) { lastY -= (110 + Math.random() * 80); platforms.push(createPlatformData(lastY)); } 
+    platforms.push({ x: 127, y: 752, baseY: 752, w: 138, h: 22, img: 'block_1.png' }); 
+}
 
 function update() {
     if (!isGameRunning) { requestAnimationFrame(update); return; }
-    if (keys['ArrowLeft']) { posX -= 7; currentScale = -1; } if (keys['ArrowRight']) { posX += 7; currentScale = 1; }
-    posX = Math.max(-154, Math.min(154, posX)); velocityY += PHYSICS.gravity; currentY += velocityY; mouseAnimFrame = (mouseAnimFrame + 1) % 20;
+    velocityY += PHYSICS.gravity; currentY += velocityY; mouseAnimFrame = (mouseAnimFrame + 1) % 20;
     
     const charLeft = 196 + posX - 25, charFootY = 752 + currentY;
 
     platforms.forEach(p => {
-        if (p.hasMouse) {
-            if (!p.isBroken) {
-                p.mouseX += p.mouseDir * p.mouseSpeed; if (p.mouseX <= 0 || p.mouseX + 72 >= p.w) p.mouseDir *= -1;
-                let mx = p.x + p.mouseX, my = p.y - 35;
-                if (charLeft + 35 > mx + 25 && charLeft + 15 < mx + 45 && charFootY > my && charFootY < my + 45) { 
-                    velocityY = -12; posX += (posX > (mx - p.x) ? 50 : -50); 
-                }
-            } else { p.mouseVY += 0.6; p.mouseYOffset += p.mouseVY; }
+        if (p.hasMouse && !p.isBroken) {
+            p.mouseX += p.mouseDir * 1; if (p.mouseX <= 0 || p.mouseX + 72 >= p.w) p.mouseDir *= -1;
+            let mx = p.x + p.mouseX, my = p.y - 35;
+            // ★ 쥐돌이 히트박스 최소화 (가로 판정 폭을 좁게 수정) ★
+            if (charLeft + 35 > mx + 30 && charLeft + 15 < mx + 42 && charFootY > my && charFootY < my + 45) { 
+                velocityY = -12; 
+            }
         }
-        if (!p.isBroken) {
-            if (p.item && !p.itemCollected) {
-                let ix = p.x + p.w/2 - 25, iy = p.y - 55;
-                if (charLeft + 45 > ix && charLeft + 5 < ix + 50 && charFootY > iy && charFootY < iy + 50) {
-                    p.itemCollected = true;
-                    if (p.item === 'clover') { cloverCount++; rateEl.innerText = `${(cloverCount * 0.1).toFixed(2)}%`; }
-                    else if (p.item === 'gold') velocityY = PHYSICS.superJumpPower;
-                }
-            }
-            if (velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) { 
-                loadRive('kongsik_ingame_land.riv'); velocityY = PHYSICS.jumpPower; currentY = p.y - 752; if (p.isBreakable) p.isBroken = true; 
-                setTimeout(() => loadRive('kongsik_ingame_air.riv'), 200);
-            }
+        if (velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) { 
+            velocityY = PHYSICS.jumpPower; currentY = p.y - 752; 
         }
     });
 
-    if (currentY < -250) { let d = -250 - currentY; currentY = -250; score += d; scoreEl.innerText = Math.floor(score * 0.01) + "m"; bgScrollY += d; document.getElementById('bg-layer').style.backgroundPositionY = (bgScrollY % 852) + 'px'; platforms.forEach(p => { p.y += d; p.baseY += d; if (p.y > 852) { Object.assign(p, createPlatformData(Math.min(...platforms.map(pl => pl.y)) - (110 + Math.random() * 100))); p.isBroken = false; } }); }
-    if (charFootY > 1050) showResult();
-    canvasCont.style.transform = `translate(${Math.floor(posX)}px, ${Math.floor(currentY)}px) scaleX(${currentScale})`;
-    
-    document.querySelectorAll('.platform, .game-item, .mouse-enemy').forEach(el => el.remove());
+    if (currentY < -250) { 
+        let d = -250 - currentY; currentY = -250; score += d; 
+        platforms.forEach(p => { p.y += d; if (p.y > 852) { Object.assign(p, createPlatformData(Math.min(...platforms.map(pl => pl.y)) - (110 + Math.random() * 80))); } }); 
+    }
+    if (charFootY > 1050) { isGameRunning=false; document.getElementById('result-screen').style.display='flex'; }
+    canvasCont.style.transform = `translate(${posX}px, ${currentY}px)`;
+    document.querySelectorAll('.platform, .mouse-enemy').forEach(el => el.remove());
     platforms.forEach(p => {
-        if (!p.isBroken) {
-            const d = document.createElement('div'); d.className = 'platform'; d.style.cssText = `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:22px;background-image:url('${p.img}');`; document.getElementById('game-stage').appendChild(d);
-            if (p.item && !p.itemCollected) { const it = document.createElement('div'); it.className = 'game-item'; it.style.backgroundImage = `url('item_${p.item}.png')`; it.style.left = (p.x + p.w/2 - 25) + 'px'; it.style.top = (p.y - 55) + 'px'; document.getElementById('game-stage').appendChild(it); }
-        }
-        if (p.hasMouse) { const m = document.createElement('div'); m.className = 'mouse-enemy'; m.style.cssText = `left:${p.x + p.mouseX}px;top:${p.y + p.mouseYOffset}px;background-image:url('mouse_walk${mouseAnimFrame < 10 ? 1 : 2}.png'); transform: scaleX(${p.mouseDir})`; document.getElementById('game-stage').appendChild(m); }
+        const d = document.createElement('div'); d.className = 'platform'; d.style.cssText = `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:22px;background-image:url('${p.img}');`; document.getElementById('game-stage').appendChild(d);
+        if (p.hasMouse) { const m = document.createElement('div'); m.className = 'mouse-enemy'; m.style.cssText = `left:${p.x + p.mouseX}px;top:${p.y - 52}px;background-image:url('mouse_walk1.png');`; document.getElementById('game-stage').appendChild(m); }
     });
     requestAnimationFrame(update);
 }
-loadMainRive();
-update();
+loadMainRive(); update();
 </script>
 </body>
 </html>
