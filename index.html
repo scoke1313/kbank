@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 쥐돌이 진정 패치</title>
+    <title>콩콩춘식 - 쥐돌이 정방향 패치</title>
     <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -41,7 +41,7 @@
 <script>
 const PHYSICS = { gravity: 0.81, jumpPower: -18.9, moveSpeed: 7, motionHold: 10 };
 const PLATFORM_TYPES = { wood: ['wood_1.png', 'wood_2.png', 'wood_3.png'], block: ['block_1.png', 'block_2.png', 'block_3.png'] };
-const SIZES = [138, 98, 58];
+const SIZES = [138, 98, 58]; 
 
 let currentY = 0, velocityY = 0, posX = 0, score = 0, bgScrollY = 0;
 let riveInstance, keys = {}, currentScale = 1;
@@ -85,14 +85,15 @@ function createPlatformData(yPos) {
     let isBreakable = (playTime < 10) ? (rand < 0.1) : (rand > 0.25);
     const typeKey = isBreakable ? 'wood' : 'block';
     
-    // 쥐돌이 등장 확률 (평균적인 속도로 설정)
-    let hasMouse = !isBreakable && rand < 0.2; 
+    // ★ 큰 발판(138px)에서만 쥐돌이 출현 로직 적용
+    let canHaveMouse = (width === 138) && !isBreakable && (rand < 0.2); 
+
     return {
         x: Math.random() * (393 - width), y: yPos, w: width, h: 22,
         img: PLATFORM_TYPES[typeKey][sizeIdx],
         isBreakable: isBreakable, durability: isBreakable ? 2 : 999,
-        hasMouse: hasMouse, mouseX: Math.random() * (width - 60), mouseDir: Math.random() > 0.5 ? 1 : -1,
-        mouseSpeed: 0.8 + Math.random() * 0.7, // 쥐돌이 속도 대폭 하향
+        hasMouse: canHaveMouse, mouseX: Math.random() * (width - 60), mouseDir: Math.random() > 0.5 ? 1 : -1,
+        mouseSpeed: 0.7 + Math.random() * 0.5, // 속도 더 안정적으로 하향
         type: (rand > 0.9) ? 'h' : 'normal', speed: 1.5, isBroken: false
     };
 }
@@ -129,7 +130,6 @@ function update() {
         if (p.isBroken) return;
         if (p.type === 'h') { p.x += p.speed; if (p.x <= 0 || p.x + p.w >= 393) p.speed *= -1; }
         
-        // 쥐돌이 움직임 진정 패치
         if (p.hasMouse) {
             p.mouseX += p.mouseDir * p.mouseSpeed;
             if (p.mouseX <= 0 || p.mouseX + 60 >= p.w) p.mouseDir *= -1;
@@ -141,7 +141,6 @@ function update() {
             }
         }
 
-        // 착지 및 점프 모션 동기화
         if (velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) {
             loadRive('kongsik_ingame_land.riv'); 
             velocityY = PHYSICS.jumpPower; currentY = p.y - 752; 
@@ -150,7 +149,6 @@ function update() {
         }
     });
 
-    // 춘식이 모션 복구 타이머
     if (motionTimer > 0) {
         motionTimer--;
         if (motionTimer === 1) loadRive('kongsik_ingame_air.riv');
@@ -179,7 +177,8 @@ function update() {
         if (p.hasMouse) {
             const m = document.createElement('div');
             m.className = 'mouse-enemy';
-            m.style.cssText = `left:${p.x + p.mouseX}px;top:${p.y - 40}px;background-image:url('mouse_walk${mouseAnimFrame < 10 ? 1 : 2}.png'); transform: scaleX(${p.mouseDir*-1})`;
+            // 문워크 해결: mouseDir 그대로 scaleX에 적용
+            m.style.cssText = `left:${p.x + p.mouseX}px;top:${p.y - 40}px;background-image:url('mouse_walk${mouseAnimFrame < 10 ? 1 : 2}.png'); transform: scaleX(${p.mouseDir})`;
             stage.appendChild(m);
         }
     });
