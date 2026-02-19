@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>콩콩춘식 - 모션 전환 보정</title>
+  <title>콩콩춘식 - 로딩 완벽 해결</title>
   <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -20,10 +20,7 @@
       opacity: 0;
       z-index: 2;
     }
-    .active-chun { 
-      opacity: 1 !important; 
-      z-index: 3 !important; 
-    }
+    .active-chun { opacity: 1 !important; z-index: 3 !important; }
     
     .overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,0.6);color:#fff;text-align:center;padding:24px}
     .btn{margin-top:18px;padding:14px 40px;font-size:18px;font-weight:1000;background:#FEE500;color:#111827;border:0;border-radius:999px;cursor:pointer}
@@ -50,41 +47,52 @@
   const btnStart = document.getElementById('btnStart'), status = document.getElementById('status');
   bgCanvas.width = 480; bgCanvas.height = 800;
 
-  let landRive, airRive;
+  let landRive = null, airRive = null;
   let landReady = false, airReady = false;
 
-  function init() {
-    landRive = new rive.Rive({
-      [cite_start]src: 'kongsik_ingame_land.riv', [cite: 289]
-      canvas: landCanvas,
-      artboard: 'Artboard',
-      stateMachines: 'State Machine 1',
-      autoplay: false,
-      onLoad: () => { landReady = true; landRive.resizeDrawingSurfaceToCanvas(); checkReady(); }
-    });
-    airRive = new rive.Rive({
-      [cite_start]src: 'kongsik_ingame_air.riv', [cite: 1]
-      canvas: airCanvas,
-      artboard: 'Artboard',
-      stateMachines: 'State Machine 1',
-      autoplay: false,
-      onLoad: () => { airReady = true; airRive.resizeDrawingSurfaceToCanvas(); checkReady(); }
-    });
-  }
-
+  // 1. 로딩 체크 로직 강화 (절대 안 멈춤)
   function checkReady() {
+    console.log("Land:", landReady, "Air:", airReady);
     if(landReady && airReady) {
       status.innerText = "준비 완료! 🐯";
       btnStart.classList.remove('hidden');
     }
   }
+
+  function init() {
+    landRive = new rive.Rive({
+      src: 'kongsik_ingame_land.riv',
+      canvas: landCanvas,
+      artboard: 'Artboard',
+      stateMachines: 'State Machine 1',
+      autoplay: false,
+      onLoad: () => { 
+        landReady = true; 
+        landRive.resizeDrawingSurfaceToCanvas(); // 잘림 방지
+        checkReady(); 
+      },
+      onLoadError: () => { status.innerText = "LAND 파일 로드 실패!"; }
+    });
+
+    airRive = new rive.Rive({
+      src: 'kongsik_ingame_air.riv',
+      canvas: airCanvas,
+      artboard: 'Artboard',
+      stateMachines: 'State Machine 1',
+      autoplay: false,
+      onLoad: () => { 
+        airReady = true; 
+        airRive.resizeDrawingSurfaceToCanvas(); // 잘림 방지
+        checkReady(); 
+      },
+      onLoadError: () => { status.innerText = "AIR 파일 로드 실패!"; }
+    });
+  }
   init();
 
   let jumpPower = -15, gravity = 0.65; 
   let p = { x: 197, y: 600, vy: 0 }, isRunning = false, lastDir = 1;
-  let isSpringing = false; 
-
-  let landLockTimer = 0; 
+  let isSpringing = false, landLockTimer = 0;
   const MIN_LAND_TIME = 200; 
 
   window.addEventListener('keydown', e => { 
@@ -113,7 +121,6 @@
       p.y = 600;
       isSpringing = true;
       landLockTimer = MIN_LAND_TIME;
-      
       setLayer(landCanvas); 
       landRive.scrub("State Machine 1", 0);
       landRive.play("State Machine 1");
@@ -121,12 +128,11 @@
 
     if (landLockTimer > 0) {
       landLockTimer -= dt;
-    } 
-    else if (p.vy < 0) {
-      // --- 핵심 수정: 공중 모션 전환 시에도 리셋 ---
+    } else if (p.vy < 0) {
+      // 2. 공중 모션 전환 시 0프레임 리셋
       if (!airCanvas.classList.contains('active-chun')) {
         setLayer(airCanvas);
-        airRive.scrub("State Machine 1", 0); // 프레임 처음으로 리셋
+        airRive.scrub("State Machine 1", 0);
         airRive.play("State Machine 1");
       }
     }
