@@ -3,19 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>콩콩춘식 - 20fps 최종 합체</title>
+  <title>콩콩춘식 - 물리 업데이트</title>
   <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     body{margin:0;background:#f0f0f0;overflow:hidden;font-family:'Pretendard',system-ui;display:flex;justify-content:center;align-items:center;height:100vh;touch-action:none}
     #game-container{position:relative;width:100%;max-width:480px;height:100%;max-height:800px;background:linear-gradient(#A1C4FD,#C2E9FB);overflow:hidden}
-    
-    /* 1. 배경/발판 캔버스 */
     #bgCanvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1}
-    
-    /* 2. 춘식이 전용 투명 레이어 (86x138 고정) */
     #chunCanvas{position:absolute;z-index:2;width:86px;height:138px;pointer-events:none;display:none}
-    
     #hud{position:absolute;top:16px;left:16px;z-index:5;background:rgba(255,255,255,.92);padding:10px 14px;border-radius:999px;font-weight:1000;color:#111827;}
     .overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,0.6);color:#fff;text-align:center;padding:24px}
     .btn{margin-top:18px;padding:14px 40px;font-size:18px;font-weight:1000;background:#FEE500;color:#111827;border:0;border-radius:999px;cursor:pointer}
@@ -26,13 +21,12 @@
 <div id="game-container">
   <div id="hud">금리: <span id="rate">2.0</span>%</div>
   <canvas id="bgCanvas"></canvas>
-  <canvas id="chunCanvas"></canvas> <div id="start" class="overlay">
+  <canvas id="chunCanvas"></canvas>
+  <div id="start" class="overlay">
     <h1 style="color:#FFEF6B; font-size:32px;">콩콩춘식</h1>
     <div id="status" style="color:#FFEF6B; font-weight:800; margin-bottom:10px;">캐릭터 로딩 중...</div>
     <button class="btn hidden" id="btnStart">게임 시작</button>
   </div>
-  <div id="touchL" style="position:absolute;bottom:0;left:0;width:50%;height:100%;z-index:3"></div>
-  <div id="touchR" style="position:absolute;bottom:0;right:0;width:50%;height:100%;z-index:3"></div>
 </div>
 
 <script>
@@ -52,17 +46,15 @@
   let kongsikLoaded = false;
   let rInstance = null;
 
-  // 바이너리 직접 주입으로 로딩 에러 원천 차단
   async function initRive() {
     try {
       const resp = await fetch('kongsik_ingame_20fps.riv');
-      const buffer = await resp.arrayBuffer();
-      
+      const buffer = await resp.arrayBuffer(); [cite: 686]
       rInstance = new rive.Rive({
-        buffer: buffer,
+        buffer: buffer, [cite: 686]
         canvas: chunCanvas,
-        artboard: 'Artboard',
-        stateMachines: 'State Machine 1',
+        artboard: 'Artboard', [cite: 715]
+        stateMachines: 'State Machine 1', [cite: 1089]
         autoplay: true,
         onLoad: () => {
           rInstance.resizeDrawingSurfaceToCanvas();
@@ -72,23 +64,29 @@
         }
       });
     } catch (e) {
-      status.innerText = "❌ 로드 에러 (파일 이름 확인!)";
+      status.innerText = "❌ 로드 에러";
     }
   }
   initRive();
 
-  let p = { x: 0, y: 0, vx: 0, vy: -12 }, isRunning = false, lastTime = 0, lastDir = 1;
+  // --- 물리 설정 (공중 체류 시간 0.7초 조정) ---
+  // 체류 시간 T = 0.7초일 때, 중력 g = 8 * 점프력 / (T^2) 공식을 활용하여 계산
+  let jumpPower = -12; 
+  let gravity = 0.75; // 0.7초 체류를 위한 중력값 보정
+  let p = { x: 0, y: 0, vx: 0, vy: jumpPower }, isRunning = false, lastTime = 0;
+  let lastDir = -1; // 방향 반전: 초기 방향을 반대로 설정
   const keys = { left: false, right: false };
   let platforms = [];
 
+  // --- 조작키 반전 설정 ---
   window.addEventListener('keydown', e => { 
-    if(e.code==='ArrowLeft'){keys.left=true; lastDir=1;} 
-    if(e.code==='ArrowRight'){keys.right=true; lastDir=-1;} 
+    if(e.code==='ArrowLeft'){keys.left=true; lastDir=-1;} // 왼쪽 키 -> 시선 왼쪽
+    if(e.code==='ArrowRight'){keys.right=true; lastDir=1;} // 오른쪽 키 -> 시선 오른쪽
   });
   window.addEventListener('keyup', e => { if(e.code==='ArrowLeft')keys.left=false; if(e.code==='ArrowRight')keys.right=false; });
 
   function reset() {
-    p.x = bgCanvas.width / 2; p.y = bgCanvas.height - 200; p.vx = 0; p.vy = -12;
+    p.x = bgCanvas.width / 2; p.y = bgCanvas.height - 200; p.vx = 0; p.vy = jumpPower;
     platforms = [];
     for(let i=0; i<8; i++) platforms.push({ x: Math.random()*(bgCanvas.width-120), y: bgCanvas.height-70-i*92 });
   }
@@ -97,18 +95,28 @@
     if(!isRunning) return;
     lastTime = now;
 
-    // 물리 업데이트
-    if(keys.left) p.vx = -6.5; else if(keys.right) p.vx = 6.5; else p.vx *= 0.85;
-    p.x += p.vx; p.vy += 0.45; p.y += p.vy;
+    // --- 조작 방향 반전 적용 ---
+    // 기존과 반대로 왼쪽 키를 누르면 오른쪽(+)으로, 오른쪽 키를 누르면 왼쪽(-)으로 이동
+    if(keys.left) p.vx = 6.5; 
+    else if(keys.right) p.vx = -6.5; 
+    else p.vx *= 0.85;
+
+    p.x += p.vx; p.vy += gravity; p.y += p.vy;
     if(p.x < -30) p.x = bgCanvas.width + 30; if(p.x > bgCanvas.width + 30) p.x = -30;
 
-    // 배경/발판 그리기
     bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
     bgCtx.fillStyle = "#9CCC65"; 
     platforms.forEach(pl => {
       bgCtx.fillRect(pl.x, pl.y, 120, 15);
-      // 충돌 체크 (피벗 보정 반영)
-      if(p.vy > 0 && p.x > pl.x-15 && p.x < pl.x+135 && p.y+40 >= pl.y && p.y+40 <= pl.y+20) p.vy = -12.5;
+      // 발판 충돌 시 애니메이션 초기화 (처음부터 재생)
+      if(p.vy > 0 && p.x > pl.x-15 && p.x < pl.x+135 && p.y+40 >= pl.y && p.y+40 <= pl.y+20) {
+        p.vy = jumpPower;
+        if(kongsikLoaded && rInstance) {
+          // 애니메이션 시간을 0으로 되돌려 처음부터 재생 효과
+          rInstance.scrub("State Machine 1", 0); [cite: 1089]
+          rInstance.play("State Machine 1");
+        }
+      }
     });
 
     if(p.y < bgCanvas.height/2 && p.vy < 0) {
@@ -116,11 +124,11 @@
       platforms.forEach(pl => { pl.y += dy; if(pl.y > bgCanvas.height) { pl.y -= 92*8; pl.x = Math.random()*(bgCanvas.width-120); } });
     }
 
-    // ★ 핵심: 춘식이 투명 레이어 위치를 물리 좌표에 동기화
     if (kongsikLoaded) {
       chunCanvas.style.display = 'block';
-      chunCanvas.style.left = (p.x - 43) + 'px'; // 86의 절반
-      chunCanvas.style.top = (p.y - 69) + 'px';  // 138의 절반
+      chunCanvas.style.left = (p.x - 43) + 'px';
+      chunCanvas.style.top = (p.y - 69) + 'px';
+      // 춘식이 시선 방향도 이동 방향에 맞춰 반전
       chunCanvas.style.transform = `scaleX(${lastDir})`;
     }
 
