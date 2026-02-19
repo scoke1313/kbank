@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 배경 레이어 교정 패치</title>
+    <title>콩콩춘식 - 확장자 및 배경 통합 패치</title>
     <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -11,9 +11,11 @@
             position: relative; 
             width: 393px; 
             height: 852px; 
-            /* 교정: 이미지를 컬러보다 앞에 배치 (이미지 -> 컬러 순서) */
-            background: url('bg_ingame.jpg') repeat-y, #FFFDF5;
+            /* 교정: bg_ingame.png로 수정 */
+            background-image: url('bg_ingame.png'); 
+            background-repeat: repeat-y;
             background-size: 100% auto;
+            background-color: #FFFDF5; 
             overflow: hidden; 
         }
 
@@ -37,13 +39,20 @@
         }
         #btn-left { left: 30px; bottom: 40px; transform: scaleX(-1); }
         #btn-right { right: 30px; bottom: 40px; }
+        /* 컨트롤러 이미지 png 적용 */
         .ctrl-default { background-image: url('controller_Default.png'); }
         .ctrl-pressed { background-image: url('controller_pressed.png'); }
+        
+        #score-board {
+            position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold;
+            color: #5c3e34; z-index: 100; font-family: sans-serif;
+        }
     </style>
 </head>
 <body>
 
 <div id="game-stage">
+    <div id="score-board">0m</div>
     <div id="canvas-container"><canvas id="canvas"></canvas></div>
     <div id="btn-left" class="controller ctrl-default"></div>
     <div id="btn-right" class="controller ctrl-default"></div>
@@ -56,6 +65,7 @@ const PHYSICS = {
     minGap: 150, maxGap: 190 
 };
 
+// 교정: 이미지 리소스 png 확장자 통일
 const PLATFORM_TYPES = {
     wood: ['wood_1.png', 'wood_2.png', 'wood_3.png'],
     block: ['block_1.png', 'block_2.png', 'block_3.png']
@@ -63,12 +73,13 @@ const PLATFORM_TYPES = {
 const SIZES = [138, 98, 58];
 const PLATFORM_H = 22;
 
-let currentY = 0, velocityY = 0, posX = 0, bgScrollY = 0;
+let currentY = 0, velocityY = 0, posX = 0, score = 0, bgScrollY = 0;
 let riveInstance, keys = {}, currentScale = 1;
 let platforms = [], motionTimer = 0, lastLoadedFile = "";
 
 const btnLeft = document.getElementById('btn-left');
 const btnRight = document.getElementById('btn-right');
+const scoreEl = document.getElementById('score-board');
 
 function setBtnState(btn, isPressed) {
     btn.classList.toggle('ctrl-default', !isPressed);
@@ -106,7 +117,7 @@ function createPlatformData(yPos) {
     const width = SIZES[sizeIdx];
     const rand = Math.random();
     
-    // 나무(wood) = 부서짐, 벽돌(block) = 무적
+    // 교정: wood(나무)가 부서지고 block(벽돌)이 무적
     const isBreakable = rand > 0.25; 
     const typeKey = isBreakable ? 'wood' : 'block';
     let moveType = (rand > 0.9) ? 'h' : (rand > 0.85 ? 'v' : 'normal');
@@ -116,7 +127,7 @@ function createPlatformData(yPos) {
         y: yPos, w: width, h: PLATFORM_H,
         img: PLATFORM_TYPES[typeKey][sizeIdx],
         isBreakable: isBreakable,
-        durability: isBreakable ? 2 : 999,
+        durability: isBreakable ? 2 : 999, 
         type: moveType,
         speed: (Math.random() * 1.5 + 1) * (Math.random() > 0.5 ? 1 : -1),
         offset: Math.random() * Math.PI * 2,
@@ -126,14 +137,16 @@ function createPlatformData(yPos) {
 }
 
 function initPlatforms() {
-    platforms = [];
+    score = 0; scoreEl.innerText = "0m";
     bgScrollY = 0;
+    platforms = [];
     let lastY = 752;
     for (let i = 0; i < 5; i++) {
         const nextGap = PHYSICS.minGap + Math.random() * (PHYSICS.maxGap - PHYSICS.minGap);
         lastY -= nextGap;
         platforms.push(createPlatformData(lastY));
     }
+    // 시작 발판은 벽돌(무적)
     platforms.push({ x: PHYSICS.stageWidth/2 - 69, y: 752, w: 138, h: PLATFORM_H, img: 'block_1.png', isBreakable: false, durability: 999, type: 'normal' }); 
 }
 
@@ -191,8 +204,11 @@ function update() {
     if (currentY < -250) {
         let diff = -250 - currentY;
         currentY = -250;
+        score += Math.floor(diff);
+        scoreEl.innerText = score + "m";
+        
         bgScrollY += diff;
-        // 배경 이미지 스크롤 동기화
+        // 교정: 정수값 적용하여 밀림 방지
         document.getElementById('game-stage').style.backgroundPositionY = Math.floor(bgScrollY) + 'px';
 
         platforms.forEach(p => {
@@ -208,8 +224,8 @@ function update() {
     }
 
     if (charFootY > 950) {
-        currentY = 0; velocityY = PHYSICS.jumpPower; 
         initPlatforms();
+        currentY = 0; velocityY = PHYSICS.jumpPower; 
         loadRive('kongsik_ingame_air.riv');
     }
 
