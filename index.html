@@ -13,26 +13,26 @@
             background-size: 100% auto; background-color: #FFFDF5; overflow: hidden; 
         }
 
-        /* --- 네비게이션: 상단 마진 없이 최상단에 딱 붙임 --- */
+        /* --- 네비게이션: 여백 없이 이미지 크기대로 상단 밀착 --- */
         #nav-bar {
             position: absolute; 
-            top: 0; /* 상단 마진 0 */
+            top: 0; 
             left: 0; 
             width: 393px; 
-            z-index: 9999; /* 모든 요소보다 위 */
+            z-index: 9999; 
             cursor: pointer;
-            line-height: 0;
+            /* 불필요한 높이 및 패딩 모두 제거 */
         }
         
         #nav-bar img {
             width: 100%;
-            height: auto; /* 비율 유지하여 찌그러짐 방지 */
+            height: auto; /* 이미지 원래 비율대로 표시 */
             display: block;
         }
 
-        /* UI 위치 조정 (상단바 영역 고려) */
-        #score-board { position: absolute; top: 70px; left: 20px; font-size: 24px; font-weight: bold; color: #5c3e34; z-index: 100; }
-        #rate-board { position: absolute; top: 70px; right: 20px; font-size: 22px; font-weight: bold; color: #2E7D32; z-index: 100; }
+        /* UI 위치 (네비게이션 아이콘 바로 아래로 조정) */
+        #score-board { position: absolute; top: 40px; left: 20px; font-size: 24px; font-weight: bold; color: #5c3e34; z-index: 100; }
+        #rate-board { position: absolute; top: 40px; right: 20px; font-size: 22px; font-weight: bold; color: #2E7D32; z-index: 100; }
 
         #canvas-container {
             position: absolute; width: 86px !important; height: 138px !important;
@@ -177,21 +177,15 @@ function update() {
                     } else if (p.item === 'gold') { isSuperJumping = true; velocityY = PHYSICS.superJumpPower; canvasCont.classList.add('gold-glow'); loadRive('kongsik_ingame_air.riv'); }
                 }
             }
-
             if (!isSuperJumping && p.hasMouse) {
                 if (p.mouseWaitTimer > 0) p.mouseWaitTimer--;
                 else { p.mouseX += p.mouseDir * p.mouseSpeed; if (p.mouseX <= 0 || p.mouseX + 72 >= p.w) { p.mouseDir *= -1; p.mouseWaitTimer = 30 + Math.floor(Math.random() * 90); } }
                 let mx = p.x + p.mouseX, my = p.y - 35;
                 if (charLeft + 35 > mx + 20 && charLeft + 15 < mx + 52 && charFootY > my && charFootY < my + 45) { velocityY = -12; posX += (posX > (mx - p.x) ? 50 : -50); }
             }
-
-            if (!isSuperJumping && velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) { 
-                loadRive('kongsik_ingame_land.riv'); velocityY = PHYSICS.jumpPower; currentY = p.y - 752; motionTimer = PHYSICS.motionHold; 
-                p.isTouched = true; if (p.isBreakable) { p.durability--; if (p.durability <= 0) p.isBroken = true; } 
-            }
-        }
+            if (!isSuperJumping && velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) { loadRive('kongsik_ingame_land.riv'); velocityY = PHYSICS.jumpPower; currentY = p.y - 752; motionTimer = PHYSICS.motionHold; p.isTouched = true; if (p.isBreakable) { p.durability--; if (p.durability <= 0) p.isBroken = true; } }
+        } else if (p.hasMouse) { p.mouseVY += 0.6; p.mouseYOffset += p.mouseVY; }
     });
-
     if (motionTimer > 0) { motionTimer--; if (motionTimer === 1) loadRive('kongsik_ingame_air.riv'); }
     if (currentY < -250) {
         let diff = -250 - currentY; currentY = -250; score += diff; scoreEl.innerText = Math.floor(score * 0.01) + "m";
@@ -200,29 +194,19 @@ function update() {
     }
     if (charFootY > 1050) initPlatforms();
     document.getElementById('canvas-container').style.transform = `translate(${Math.floor(posX)}px, ${Math.floor(currentY)}px) scaleX(${currentScale})`;
-    
     const stage = document.getElementById('game-stage');
     document.querySelectorAll('.platform, .mouse-enemy, .game-item').forEach(el => el.remove());
-    
     platforms.forEach(p => {
         if (!p.isBroken) {
-            const d = document.createElement('div'); 
-            d.className = 'platform'; 
-            d.style.cssText = `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:22px;background-image:url('${p.img}'); opacity:${(p.isBreakable && p.isTouched) ? 0.6 : 1.0};`;
+            const d = document.createElement('div'); d.className = 'platform'; d.style.cssText = `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:22px;background-image:url('${p.img}'); opacity:${(p.isBreakable && p.isTouched) ? 0.6 : 1.0};`;
             stage.appendChild(d);
-
             if (p.item && !p.itemCollected) {
-                const itemDiv = document.createElement('div'); 
-                itemDiv.className = 'game-item'; 
-                itemDiv.style.backgroundImage = `url('item_${p.item}.png')`; 
-                itemDiv.style.left = (p.x + p.w/2 - 25) + 'px'; 
-                itemDiv.style.top = (p.y - 55) + 'px';
+                const itemDiv = document.createElement('div'); itemDiv.className = 'game-item'; itemDiv.style.backgroundImage = `url('item_${p.item}.png')`; itemDiv.style.left = (p.x + p.w/2 - 25) + 'px'; itemDiv.style.top = (p.y - 55) + 'px';
                 stage.appendChild(itemDiv);
             }
         }
         if (p.hasMouse) {
-            const m = document.createElement('div');
-            m.className = 'mouse-enemy';
+            const m = document.createElement('div'); m.className = 'mouse-enemy';
             const mouseImg = (p.mouseWaitTimer > 0 || p.isBroken) ? 'mouse2.png' : `mouse_walk${mouseAnimFrame < 10 ? 1 : 2}.png`;
             m.style.cssText = `left:${p.x + p.mouseX}px;top:${p.y + p.mouseYOffset}px;background-image:url('${mouseImg}'); transform: scaleX(${p.mouseDir})`;
             stage.appendChild(m);
