@@ -19,13 +19,12 @@
             position: absolute;
             width: 86px;
             height: 138px;
-            bottom: 100px; 
+            bottom: 100px; /* 초기 위치: 바닥에서 100px 위 */
             left: 50%;
             margin-left: -43px; 
             z-index: 10;
         }
         canvas { width: 100%; height: 100%; }
-        /* 발판 스타일 */
         .platform {
             position: absolute;
             width: 80px;
@@ -48,67 +47,62 @@
 const PHYSICS = {
     gravity: 0.9,       
     jumpPower: -21,     
-    groundY: 0,         
-    moveSpeed: 6,
+    moveSpeed: 7,
     stageWidth: 393,
+    stageHeight: 852,
     motionHold: 12      // 0.2초 유지
 };
 
-let currentY = 0;
+let currentY = 0;       // translateY 값 (0일 때 bottom:100px 위치)
 let velocityY = 0;
 let posX = 0;           
-let isJumping = true;   
 let riveInstance;
 let keys = {};          
 let currentScale = 1;   
-
-// 발판 및 모션 관리 변수
 let platforms = [];
 let motionTimer = 0;
 let lastLoadedFile = "";
 
-// Rive 초기화 (중복 로드 방지 가드 포함)
+// Rive 초기화
 function loadRive(fileName) {
     if (lastLoadedFile === fileName) return;
     lastLoadedFile = fileName;
-
     if (riveInstance) riveInstance.cleanup();
     riveInstance = new rive.Rive({
         src: fileName,
         canvas: document.getElementById('canvas'),
         autoplay: true,
         stateMachines: 'State Machine 1',
-        onLoad: () => {
-            riveInstance.resizeDrawingSurfaceToCanvas();
-        }
+        onLoad: () => { riveInstance.resizeDrawingSurfaceToCanvas(); }
     });
 }
 
 // 발판 생성
 function initPlatforms() {
+    platforms = [];
     for (let i = 0; i < 8; i++) {
         platforms.push({ x: Math.random() * (393 - 80), y: i * 110 + 50 });
     }
-    // 시작 위치 발판
-    platforms.push({ x: 393/2 - 40, y: 720 });
+    // 시작 발판 (춘식이 발 바로 밑)
+    platforms.push({ x: 393/2 - 40, y: 752 }); 
 }
 
 loadRive('kongsik_ingame_air.riv');
 initPlatforms();
 
 function update() {
-    // 1. 좌우 이동 및 이탈 방지
+    // 1. 이동 및 화면 제한
     if (keys['ArrowLeft']) { posX -= PHYSICS.moveSpeed; currentScale = -1; }
     if (keys['ArrowRight']) { posX += PHYSICS.moveSpeed; currentScale = 1; }
     const limit = (PHYSICS.stageWidth / 2) - 43;
     if (posX < -limit) posX = -limit;
     if (posX > limit) posX = limit;
 
-    // 2. 수직 물리 계산
+    // 2. 물리 엔진
     velocityY += PHYSICS.gravity;
     currentY += velocityY;
 
-    // 3. 모션 상태 제어 (0.2초 유지 로직)
+    // 3. 모션 상태 관리
     if (motionTimer > 0) {
         motionTimer--;
         loadRive('kongsik_ingame_air.riv');
@@ -116,19 +110,20 @@ function update() {
         loadRive('kongsik_ingame_land.riv');
     }
 
-    // 4. [정밀 설계] 하단 히트박스 충돌 판정
-    if (velocityY > 0) { // 하강 시에만 판정
-        platforms.forEach(p => {
-            // 캐릭터 발바닥의 정확한 Y 좌표 (Container의 bottom 라인)
-            const charFootY = (852 - 100 - currentY); 
-            // 캐릭터의 중앙 기준 가로 판정 영역 (타이트하게 설정)
-            const charLeft = (393 / 2) + posX - 25; 
+    // 4. [버그수정] 정밀 히트박스 판정
+    // 초기 bottom:100px일 때 발의 Y좌표는 752 (852 - 100)
+    // currentY가 마이너스면 위로, 플러스면 아래로 이동함
+    const charFootY = 752 + currentY; 
+    const charLeft = (393 / 2) + posX - 25; // 발 너비 타이트하게 조정
 
-            // 발판의 윗면과 캐릭터 발바닥이 교차하는 순간 판정
+    if (velocityY > 0) { // 하강할 때만 체크
+        platforms.forEach(p => {
+            // 발바닥이 발판 윗면을 통과하는 순간 (정밀도 15px)
             if (charLeft + 50 > p.x && charLeft < p.x + 80 &&
-                charFootY >= p.y && charFootY <= p.y + 12) {
+                charFootY >= p.y && charFootY <= p.y + 15) {
                 
                 velocityY = PHYSICS.jumpPower; 
+                currentY = p.y - 752; // 발 위치를 발판 윗면에 강제 고정 (오차 보정)
                 motionTimer = PHYSICS.motionHold; 
                 loadRive('kongsik_ingame_air.riv');
             }
@@ -136,9 +131,9 @@ function update() {
     }
 
     // 5. 무한 스크롤 (카메라)
-    if (currentY < -200) {
-        let diff = -200 - currentY;
-        currentY = -200;
+    if (currentY < -250) {
+        let diff = -250 - currentY;
+        currentY = -250;
         platforms.forEach(p => {
             p.y += diff;
             if (p.y > 852) {
@@ -148,14 +143,15 @@ function update() {
         });
     }
 
-    // 6. 추락 시 리셋
-    if (currentY > 300) {
+    // 6. 추락 시 게임 오버 및 리셋 (허공 점프 삭제)
+    if (charFootY > 900) { // 화면 아래로 완전히 사라지면
         currentY = 0;
         velocityY = PHYSICS.jumpPower;
-        motionTimer = PHYSICS.motionHold;
+        initPlatforms(); // 발판 새로 배치
+        loadRive('kongsik_ingame_air.riv');
     }
 
-    // 7. 결과 출력
+    // 7. 렌더링
     document.getElementById('canvas-container').style.transform = 
         `translate(${posX}px, ${currentY}px) scaleX(${currentScale})`;
 
