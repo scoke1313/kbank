@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - UI 위치 정밀 수정 버전</title>
+    <title>콩콩춘식 - 클로버 UI 정렬 수정 버전</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
@@ -29,15 +29,27 @@
             line-height: 1; z-index: 1000;
         }
 
-        /* 우측 클로버 UI: 상단 74px, 우측 20px 배치 */
+        /* ★ 클로버 UI: 정렬 문제 해결 ★ */
         .rate-capsule { 
             position: absolute; top: 74px; right: 20px;
-            display: flex; align-items: center; justify-content: center; 
+            display: flex; 
+            align-items: center; /* 수직 중앙 정렬 */
+            justify-content: center; 
             background: #FFFFFF; border: 2px solid #F0E0C6; border-radius: 30px; 
             width: 130px; height: 46px; box-sizing: border-box; z-index: 1000;
         }
-        .ui-icon { width: 25px; height: 25px; margin-right: 6px; object-fit: contain; }
-        #rate-board { font-size: 20px; font-weight: 800; color: #2D1D1C; font-family: 'Arial', sans-serif; line-height: 1; }
+        .ui-icon { 
+            width: 25px; height: 25px; 
+            margin-right: 6px; 
+            object-fit: contain; 
+            display: block; /* 공백 제거 */
+        }
+        #rate-board { 
+            font-size: 20px; font-weight: 800; color: #2D1D1C; 
+            font-family: 'Arial', sans-serif; 
+            line-height: 1; 
+            margin-top: 2px; /* 텍스트 베이스라인 시각적 보정 */
+        }
 
         /* 캐릭터 및 효과 */
         #canvas-container { position: absolute; width: 86px !important; height: 138px !important; bottom: 100px; left: 50%; margin-left: -43px; z-index: 10; }
@@ -84,6 +96,7 @@
 </div>
 
 <script>
+// 로직부 생략 (이전과 동일하게 유지)
 const PHYSICS = { gravity: 0.81, jumpPower: -18.9, superJumpPower: -45, moveSpeed: 7, motionHold: 10 };
 const PLATFORM_TYPES = { wood: ['wood_1.png', 'wood_2.png', 'wood_3.png'], block: ['block_1.png', 'block_2.png', 'block_3.png'] };
 const SIZES = [138, 98, 58]; 
@@ -152,10 +165,7 @@ function update() {
                         let eff = document.createElement('div'); eff.className = 'pickup-effect'; eff.style.left = (ix - 55) + 'px'; eff.style.top = (iy - 40) + 'px'; 
                         document.getElementById('game-stage').appendChild(eff);
                         setTimeout(() => { eff.style.transform = 'translateY(-80px)'; eff.style.opacity = '0'; }, 10); setTimeout(() => eff.remove(), 800);
-                    } else if (p.item === 'gold') { 
-                        isSuperJumping = true; velocityY = PHYSICS.superJumpPower; 
-                        canvasCont.classList.add('gold-glow'); loadRive('kongsik_ingame_air.riv'); 
-                    }
+                    } else if (p.item === 'gold') { isSuperJumping = true; velocityY = PHYSICS.superJumpPower; canvasCont.classList.add('gold-glow'); loadRive('kongsik_ingame_air.riv'); }
                 }
             }
             if (!isSuperJumping && velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) { loadRive('kongsik_ingame_land.riv'); velocityY = PHYSICS.jumpPower; currentY = p.y - 752; motionTimer = PHYSICS.motionHold; p.isTouched = true; if (p.isBreakable) { p.durability--; if (p.durability <= 0) { p.isBroken = true; } } }
