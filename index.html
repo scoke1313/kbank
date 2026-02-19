@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 밸런스 재조정 버전</title>
+    <title>콩콩춘식 - 파괴 효과 추가 버전</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
@@ -43,6 +42,9 @@
         #btn-right { right: 30px; bottom: 40px; }
         .ctrl-default { background-image: url('controller_Default.png'); }
         .ctrl-pressed { background-image: url('controller_pressed.png'); }
+        
+        /* 나무 파편 스타일 */
+        .wood-chunk { position: absolute; background-color: #8D6E63; border: 1px solid #5D4037; z-index: 4; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -67,6 +69,29 @@ let currentY = 0, velocityY = 0, posX = 0, score = 0, cloverRate = 0, bgScrollY 
 let isSuperJumping = false, riveInstance, keys = {}, currentScale = 1;
 let platforms = [], motionTimer = 0, lastLoadedFile = "", mouseAnimFrame = 0;
 
+// 나무 파편 효과를 위한 변수
+let woodParticles = [];
+
+class WoodParticle {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 10;
+        this.vy = (Math.random() - 0.5) * 10 - 5;
+        this.size = 4 + Math.random() * 8;
+        this.rotation = Math.random() * 360;
+        this.rotSpeed = (Math.random() - 0.5) * 10;
+        this.life = 1.0;
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += 0.5; // 중력
+        this.rotation += this.rotSpeed;
+        this.life -= 0.02;
+    }
+}
+
 const btnLeft = document.getElementById('btn-left'), btnRight = document.getElementById('btn-right'), 
       scoreEl = document.getElementById('score-board'), rateEl = document.getElementById('rate-board'),
       canvasCont = document.getElementById('canvas-container');
@@ -74,6 +99,7 @@ const btnLeft = document.getElementById('btn-left'), btnRight = document.getElem
 const setInput = (key, isDown, btn) => { keys[key] = isDown; if(btn) { btn.classList.toggle('ctrl-default', !isDown); btn.classList.toggle('ctrl-pressed', isDown); }};
 window.addEventListener('keydown', (e) => { if (e.code === 'ArrowLeft') setInput('ArrowLeft', true, btnLeft); if (e.code === 'ArrowRight') setInput('ArrowRight', true, btnRight); });
 window.addEventListener('keyup', (e) => { if (e.code === 'ArrowLeft') setInput('ArrowLeft', false, btnLeft); if (e.code === 'ArrowRight') setInput('ArrowRight', false, btnRight); });
+
 const attachControl = (btn, key) => {
     btn.addEventListener('touchstart', (e) => { e.preventDefault(); setInput(key, true, btn); });
     btn.addEventListener('touchend', (e) => { e.preventDefault(); setInput(key, false, btn); });
@@ -90,20 +116,12 @@ function loadRive(fileName) {
 function createPlatformData(yPos) {
     let distM = Math.floor(score * 0.01);
     const rand = Math.random();
-    
-    // 초보구간 삭제: 무작위 사이즈 믹스 (점차 작아짐)
     let sizeIdx = distM < 100 ? Math.floor(rand * 2) : Math.floor(rand * SIZES.length);
     const width = SIZES[sizeIdx];
-    
-    // 나무 발판 등장 (처음부터 약한 확률로 등장)
     let isBreakable = (rand < 0.15 + (Math.min(distM, 500) / 500) * 0.75);
-    
-    // 이동형 타입 (처음부터 좌우 이동 등장)
     let moveType = 'normal';
     let moveProb = Math.min(0.5, 0.1 + (0.4 * (distM / 500)));
     if (rand < moveProb) moveType = distM < 150 ? 'h' : (Math.random() > 0.5 ? 'h' : 'v');
-
-    // 쥐돌이 즉시 등장 확률
     let canHaveMouse = (width >= 98) && (rand < 0.2); 
     let itemType = (!canHaveMouse && rand > 0.8) ? (Math.random() > 0.6 ? 'gold' : 'clover') : null;
 
@@ -111,14 +129,14 @@ function createPlatformData(yPos) {
 }
 
 function initPlatforms() {
-    document.querySelectorAll('.platform, .mouse-enemy, .game-item, .pickup-effect').forEach(el => el.remove());
+    document.querySelectorAll('.platform, .mouse-enemy, .game-item, .pickup-effect, .wood-chunk').forEach(el => el.remove());
     score = 0; cloverRate = 0; isSuperJumping = false;
     scoreEl.innerText = "0m"; rateEl.innerText = "0.00%";
     bgScrollY = 0; currentY = 0; velocityY = 0; posX = 0;
+    woodParticles = [];
     canvasCont.classList.remove('gold-glow');
     platforms = []; 
     let lastY = 752;
-    // 간격 100~200px 조정
     for (let i = 0; i < 7; i++) { 
         lastY -= (100 + Math.random() * 100); 
         platforms.push(createPlatformData(lastY)); 
@@ -139,6 +157,10 @@ function update() {
     
     if (isSuperJumping && velocityY >= 0) { isSuperJumping = false; canvasCont.classList.remove('gold-glow'); }
     
+    // 파편 업데이트
+    woodParticles.forEach(p => p.update());
+    woodParticles = woodParticles.filter(p => p.life > 0);
+
     platforms.forEach(p => {
         if (p.hasMouse) {
             if (!p.isBroken) {
@@ -169,7 +191,16 @@ function update() {
             }
             if (!isSuperJumping && velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) { 
                 loadRive('kongsik_ingame_land.riv'); velocityY = PHYSICS.jumpPower; currentY = p.y - 752; motionTimer = PHYSICS.motionHold; p.isTouched = true; 
-                if (p.isBreakable) { p.durability--; if (p.durability <= 0) p.isBroken = true; } 
+                if (p.isBreakable) { 
+                    p.durability--; 
+                    if (p.durability <= 0) {
+                        p.isBroken = true;
+                        // ★ 나무 파편 생성 ★
+                        for(let i=0; i<12; i++) {
+                            woodParticles.push(new WoodParticle(p.x + p.w/2, p.y + p.h/2));
+                        }
+                    } 
+                } 
             }
         }
     });
@@ -186,12 +217,24 @@ function update() {
                 p.isBroken = false; 
             } 
         });
+        // 파편도 스크롤에 맞춰 이동
+        woodParticles.forEach(p => p.y += diff);
     }
     if (charFootY > 1050) initPlatforms();
     document.getElementById('canvas-container').style.transform = `translate(${Math.floor(posX)}px, ${Math.floor(currentY)}px) scaleX(${currentScale})`;
     
     const stage = document.getElementById('game-stage');
-    document.querySelectorAll('.platform, .mouse-enemy, .game-item').forEach(el => el.remove());
+    // 화면에 그릴 요소들 초기화
+    document.querySelectorAll('.platform, .mouse-enemy, .game-item, .wood-chunk').forEach(el => el.remove());
+    
+    // 파편 그리기
+    woodParticles.forEach(p => {
+        const chunk = document.createElement('div');
+        chunk.className = 'wood-chunk';
+        chunk.style.cssText = `left:${p.x}px; top:${p.y}px; width:${p.size}px; height:${p.size}px; opacity:${p.life}; transform:rotate(${p.rotation}deg);`;
+        stage.appendChild(chunk);
+    });
+
     platforms.forEach(p => {
         if (!p.isBroken) {
             const d = document.createElement('div'); d.className = 'platform'; d.style.cssText = `left:${p.x}px;top:${p.y}px;width:${p.w}px;height:22px;background-image:url('${p.img}'); opacity:${(p.isBreakable && p.isTouched) ? 0.6 : 1.0};`;
