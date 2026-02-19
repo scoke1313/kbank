@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콩콩춘식 - 네비게이션 상단 밀착 패치</title>
+    <title>콩콩춘식 - 네비게이션 레이아웃 최종 패치</title>
     <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -13,7 +13,7 @@
             background-size: 100% auto; background-color: #FFFDF5; overflow: hidden; 
         }
 
-        /* --- 네비게이션: 여백 없이 이미지 크기대로 상단 밀착 --- */
+        /* --- 네비게이션: 상단 마진 없이 최상단에 딱 붙임 (이미지 비율 유지) --- */
         #nav-bar {
             position: absolute; 
             top: 0; 
@@ -21,18 +21,18 @@
             width: 393px; 
             z-index: 9999; 
             cursor: pointer;
-            /* 불필요한 높이 및 패딩 모두 제거 */
+            line-height: 0;
         }
         
         #nav-bar img {
             width: 100%;
-            height: auto; /* 이미지 원래 비율대로 표시 */
+            height: auto; 
             display: block;
         }
 
-        /* UI 위치 (네비게이션 아이콘 바로 아래로 조정) */
-        #score-board { position: absolute; top: 40px; left: 20px; font-size: 24px; font-weight: bold; color: #5c3e34; z-index: 100; }
-        #rate-board { position: absolute; top: 40px; right: 20px; font-size: 22px; font-weight: bold; color: #2E7D32; z-index: 100; }
+        /* UI 위치 조정: 네비게이션 이미지(약 60px) 아래로 배치하여 겹침 방지 */
+        #score-board { position: absolute; top: 75px; left: 20px; font-size: 24px; font-weight: bold; color: #5c3e34; z-index: 100; }
+        #rate-board { position: absolute; top: 75px; right: 20px; font-size: 22px; font-weight: bold; color: #2E7D32; z-index: 100; }
 
         #canvas-container {
             position: absolute; width: 86px !important; height: 138px !important;
