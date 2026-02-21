@@ -3,67 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>콩콩춘식 - 모바일 풀스크린 버전</title>
+    <title>콩콩춘식 - 모바일 최적화 버전</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@rive-app/canvas@latest"></script>
     <style>
-        /* 화면 여백 제거 및 풀스크린 설정 */
         body { margin: 0; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; touch-action: none; }
         
         #game-stage { 
             position: relative; 
-            width: 100vw; /* 모바일 가로 꽉 채우기 */
-            max-width: 430px; /* 최대 가로폭 제한 */
-            height: 100vh; /* 세로 꽉 채우기 */
+            /* [핵심] 모바일에선 화면에 꽉 차고, PC에선 비율 유지 */
+            width: 100vw; 
+            max-width: 430px; 
+            height: 100vh; 
+            max-height: 930px; 
             background-color: #FFFDF5; 
             background-size: 100% auto; 
             background-repeat: repeat-y; 
             overflow: hidden; 
         }
 
-        /* --- 메인 및 결과 화면 --- */
-        #main-screen, #result-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2000; }
-        #main-screen { background-image: url('bg_main.png'); background-size: cover; background-position: center; }
-        #result-screen { background: rgba(0,0,0,0.6); z-index: 3000; display: none; justify-content: center; align-items: center; }
-        
+        /* --- 메인 화면 --- */
+        #main-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('bg_main.png'); background-size: cover; background-position: center; z-index: 2000; }
         #main-rive-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         #main-canvas { width: 100%; height: 100%; }
-        
         #start-button {
             position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%);
-            width: 80%; max-width: 340px; height: 80px; 
-            background-image: url('btn_start.png'); background-size: contain; 
+            width: 85%; height: 80px; background-image: url('btn_start.png'); background-size: contain; 
             background-repeat: no-repeat; background-position: center; cursor: pointer; border: none; background-color: transparent; z-index: 2001;
         }
+
+        /* --- 결과 화면 --- */
+        #result-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; display: none; justify-content: center; align-items: center; }
+        .result-card { width: 80%; background: #FFF; border-radius: 40px; padding: 40px 24px; text-align: center; }
+        #btn-retry { margin-top: 24px; width: 100%; height: 64px; background: #2D1D1C; color: #FFF; border: none; border-radius: 20px; font-size: 18px; font-weight: 800; cursor: pointer; }
 
         /* --- 인게임 UI --- */
         #ingame-ui { display: none; pointer-events: none; }
         #btn-close-wrap { position: absolute; top: 20px; left: 10px; width: 44px; height: 44px; z-index: 1001; cursor: pointer; pointer-events: auto; }
-        #btn-close-wrap img { width: 100%; height: 100%; }
-        
-        .header-ui-container { position: absolute; top: 60px; left: 0; width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; box-sizing: border-box; z-index: 1000; }
-        #score-board { font-family: 'Poetsen One', sans-serif; font-size: clamp(30px, 8vw, 38px); color: #2D1D1C; }
-        .rate-capsule { display: flex; align-items: center; justify-content: center; background: #FFFFFF; border: 2px solid #F0E0C6; border-radius: 30px; padding: 5px 15px; }
-        #rate-board { font-size: 20px; font-weight: 800; color: #2D1D1C; }
+        .header-ui-container { position: absolute; top: 70px; left: 0; width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; box-sizing: border-box; z-index: 1000; }
+        #score-board { font-family: 'Poetsen One', sans-serif; font-size: 38px; color: #2D1D1C; }
+        .rate-capsule { display: flex; align-items: center; background: #FFFFFF; border: 2px solid #F0E0C6; border-radius: 30px; padding: 5px 15px; }
 
-        /* --- 터치 컨트롤 영역 (화면 절반씩) --- */
-        .touch-area { position: absolute; bottom: 0; height: 100%; width: 50%; z-index: 50; -webkit-tap-highlight-color: transparent; }
+        /* --- [NEW] 투명 터치 조작 영역 --- */
+        .touch-zone { position: absolute; top: 0; width: 50%; height: 100%; z-index: 40; -webkit-tap-highlight-color: transparent; }
         #touch-left { left: 0; }
         #touch-right { right: 0; }
 
-        /* --- 결과 카드 --- */
-        .result-card { width: 85%; max-width: 320px; background: #FFF; border-radius: 40px; padding: 30px 20px; text-align: center; }
-        #btn-retry { width: 100%; height: 60px; background: #2D1D1C; color: #FFF; border: none; border-radius: 20px; font-size: 18px; font-weight: 800; margin-top: 20px; }
-
         /* --- 게임 요소 --- */
-        #canvas-container { position: absolute; width: 86px; height: 138px; bottom: 100px; left: 50%; transform: translateX(-50%); z-index: 10; display: none; }
+        #canvas-container { position: absolute; width: 86px; height: 138px; bottom: 100px; left: 50%; margin-left: -43px; z-index: 10; display: none; }
         .platform { position: absolute; background-size: 100% 100%; z-index: 5; }
         .mouse-enemy { position: absolute; width: 72px; height: 54px; background-size: contain; background-repeat: no-repeat; z-index: 6; }
-        .damage-effect { position: absolute; width: 60px; height: 60px; background-image: url('effect_damege.png'); background-size: contain; z-index: 5.5; }
-        .game-item { position: absolute; width: 50px; height: 50px; background-size: contain; z-index: 7; }
-        .gold-glow { filter: drop-shadow(0 0 15px gold); }
+        .damage-effect { position: absolute; width: 60px; height: 60px; background-image: url('effect_damege.png'); background-size: contain; z-index: 5.5; pointer-events: none; }
+        
+        /* 기존 컨트롤러는 이미지 용도로 유지 (pointer-events: none 처리) */
+        .controller { position: absolute; width: 80px; height: 80px; background-size: contain; z-index: 50; pointer-events: none; display: none; }
+        #btn-left { left: 30px; bottom: 40px; transform: scaleX(-1); }
+        #btn-right { right: 30px; bottom: 40px; }
+        .ctrl-default { background-image: url('controller_Default.png'); }
+        .ctrl-pressed { background-image: url('controller_pressed.png'); }
     </style>
 </head>
 <body>
@@ -78,28 +77,29 @@
         <div class="result-card">
             <div class="res-badge">CHALLENGE DONE</div>
             <div class="res-title">금리 점프 챌린지 결과</div>
-            <div class="res-divider"></div>
-            <div id="res-total" style="font-size: 44px; font-weight: 900; color: #FA435B;">0.00%</div>
+            <div id="res-total" style="font-size: 44px; font-weight: 900; color: #FA435B; margin: 20px 0;">0.00%</div>
             <button id="btn-retry" onclick="location.reload();">다시 도전하기</button>
         </div>
     </div>
 
     <div id="ingame-ui">
-        <div id="btn-close-wrap" onclick="location.reload();"><img src="close.png" alt="close"></div>
+        <div id="btn-close-wrap" onclick="location.reload();"><img src="close.png" style="width:100%;"></div>
         <div class="header-ui-container">
             <div id="score-board">0m</div>
-            <div class="rate-capsule"><img src="clover_s.png" style="width:20px; margin-right:5px;"><span id="rate-board">0</span></div>
+            <div class="rate-capsule"><img src="clover_s.png" style="width:25px; margin-right:6px;"><span id="rate-board">0</span></div>
         </div>
     </div>
     
-    <div id="touch-left" class="touch-area"></div>
-    <div id="touch-right" class="touch-area"></div>
+    <div id="touch-left" class="touch-zone"></div>
+    <div id="touch-right" class="touch-zone"></div>
 
     <div id="canvas-container"><canvas id="canvas"></canvas></div>
+    <div id="btn-left" class="controller ctrl-default"></div>
+    <div id="btn-right" class="controller ctrl-default"></div>
 </div>
 
 <script>
-// 기존 물리 및 상태 변수 (동일)
+// 물리 설정 및 변수
 const PHYSICS = { gravity: 0.81, jumpPower: -18.9, superJumpPower: -45, moveSpeed: 7, motionHold: 10 };
 const PLATFORM_TYPES = { wood: ['wood_1.png', 'wood_2.png', 'wood_3.png'], block: ['block_1.png', 'block_2.png', 'block_3.png'] };
 const SIZES = [138, 98, 58];
@@ -108,31 +108,38 @@ let isPlaying = false, isSuperJumping = false, isGameOver = false;
 let currentY = 0, velocityY = 0, posX = 0, score = 0, cloverCount = 0, bgScrollY = 0;
 let maxReachY = 0, riveInstance, keys = {}, currentScale = 1, platforms = [], mouseAnimFrame = 0;
 
-// [추가] 스페이스바 및 터치 이벤트 핸들러
+// [추가] 스페이스바 핸들러
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space') {
         e.preventDefault();
         if (!isPlaying && !isGameOver) startGame();
         else if (isGameOver) location.reload();
     }
-    if (e.code === 'ArrowLeft') keys['ArrowLeft'] = true;
-    if (e.code === 'ArrowRight') keys['ArrowRight'] = true;
+    if (e.code === 'ArrowLeft') setInput('ArrowLeft', true);
+    if (e.code === 'ArrowRight') setInput('ArrowRight', true);
 });
 window.addEventListener('keyup', (e) => {
-    if (e.code === 'ArrowLeft') keys['ArrowLeft'] = false;
-    if (e.code === 'ArrowRight') keys['ArrowRight'] = false;
+    if (e.code === 'ArrowLeft') setInput('ArrowLeft', false);
+    if (e.code === 'ArrowRight') setInput('ArrowRight', false);
 });
 
-// 터치 영역 이벤트 바인딩
-const setupTouch = (id, key) => {
-    const el = document.getElementById(id);
-    el.addEventListener('touchstart', (e) => { e.preventDefault(); keys[key] = true; }, {passive: false});
-    el.addEventListener('touchend', (e) => { e.preventDefault(); keys[key] = false; }, {passive: false});
+// [추가] 터치 핸들러 (좌우 영역 터치 시 버튼 이미지 변화 포함)
+const setInput = (key, isDown) => {
+    if(isGameOver) return;
+    keys[key] = isDown;
+    if (key === 'ArrowLeft') document.getElementById('btn-left').classList.toggle('ctrl-pressed', isDown);
+    if (key === 'ArrowRight') document.getElementById('btn-right').classList.toggle('ctrl-pressed', isDown);
 };
-setupTouch('touch-left', 'ArrowLeft');
-setupTouch('touch-right', 'ArrowRight');
 
-// --- 게임 로직 (기존 쥐돌이 로직 포함) ---
+const setupZone = (id, key) => {
+    const el = document.getElementById(id);
+    el.addEventListener('touchstart', (e) => { e.preventDefault(); setInput(key, true); }, {passive: false});
+    el.addEventListener('touchend', (e) => { e.preventDefault(); setInput(key, false); }, {passive: false});
+};
+setupZone('touch-left', 'ArrowLeft');
+setupZone('touch-right', 'ArrowRight');
+
+// --- 게임 로직 시작 ---
 const mainRive = new rive.Rive({
     src: 'kongsik.riv',
     canvas: document.getElementById('main-canvas'),
@@ -145,31 +152,32 @@ function startGame() {
     document.getElementById('main-screen').style.display = 'none';
     document.getElementById('ingame-ui').style.display = 'block';
     document.getElementById('canvas-container').style.display = 'block';
+    document.querySelectorAll('.controller').forEach(el => el.style.display = 'block');
     document.getElementById('game-stage').style.backgroundImage = "url('bg_ingame.png')";
     isPlaying = true;
     initPlatforms();
 }
 
 function createPlatformData(yPos) {
+    const stageWidth = document.getElementById('game-stage').clientWidth;
     const rand = Math.random();
     const width = SIZES[Math.floor(rand * SIZES.length)];
-    const isBreakable = rand < 0.2;
     return { 
-        x: Math.random() * (document.getElementById('game-stage').clientWidth - width), 
-        y: yPos, baseY: yPos, w: width, h: 22, 
-        img: PLATFORM_TYPES[isBreakable?'wood':'block'][0], 
-        isBreakable, hasMouse: (width >= 98 && rand < 0.2), 
-        mouseX: 0, mouseDir: 1, mouseSpeed: 1, mouseWaitTimer: 0, mouseYOffset: -52,
-        mouseHit: false, mouseHitTimer: 0, mouseStunTimer: 0,
-        isBroken: false 
+        x: Math.random() * (stageWidth - width), y: yPos, baseY: yPos, w: width, h: 22, 
+        img: PLATFORM_TYPES[rand < 0.2 ? 'wood' : 'block'][0], 
+        isBreakable: rand < 0.2, hasMouse: (width >= 98 && rand < 0.2), 
+        mouseX: Math.random() * (width - 72), mouseDir: 1, mouseSpeed: 1, mouseWaitTimer: 0, mouseYOffset: -52,
+        mouseHit: false, mouseHitTimer: 0, mouseStunTimer: 0, isBroken: false 
     };
 }
 
 function initPlatforms() {
+    const stageWidth = document.getElementById('game-stage').clientWidth;
+    score = 0; currentY = 0; velocityY = 0; posX = 0; bgScrollY = 0;
     platforms = [];
-    let lastY = 700;
-    for (let i = 0; i < 8; i++) { lastY -= 150; platforms.push(createPlatformData(lastY)); }
-    platforms.push({ x: 100, y: 750, baseY: 750, w: 200, h: 22, img: 'block_1.png', isBreakable: false, isBroken: false });
+    let lastY = 752;
+    for (let i = 0; i < 7; i++) { lastY -= 150; platforms.push(createPlatformData(lastY)); }
+    platforms.push({ x: stageWidth/2 - 69, y: 752, baseY: 752, w: 138, h: 22, img: 'block_1.png', isBreakable: false, isBroken: false });
     loadRive('kongsik_ingame_air.riv');
 }
 
@@ -179,26 +187,25 @@ function loadRive(fileName) {
 }
 
 function update() {
-    if (!isPlaying) { requestAnimationFrame(update); return; }
+    if (!isPlaying) { if(!isGameOver) requestAnimationFrame(update); return; }
     
     const stageWidth = document.getElementById('game-stage').clientWidth;
     if (keys['ArrowLeft']) { posX -= PHYSICS.moveSpeed; currentScale = -1; }
     if (keys['ArrowRight']) { posX += PHYSICS.moveSpeed; currentScale = 1; }
     
-    // 화면 밖으로 나가지 않게 제한
-    const limit = (stageWidth / 2) - 40;
+    // 화면 끝 제한
+    const limit = (stageWidth / 2) - 30;
     posX = Math.max(-limit, Math.min(limit, posX));
     
     velocityY += PHYSICS.gravity;
     currentY += velocityY;
     mouseAnimFrame = (mouseAnimFrame + 1) % 20;
 
-    // 캐릭터 위치 계산
     const charFootY = 752 + currentY;
     const charLeft = (stageWidth / 2) + posX - 25;
 
     platforms.forEach(p => {
-        // 쥐돌이 로직 (기억한 버전 그대로)
+        // 쥐돌이 충돌 및 재기동 로직
         if (p.hasMouse) {
             if (p.mouseHitTimer > 0) p.mouseHitTimer--;
             if (p.mouseStunTimer > 0) {
@@ -210,23 +217,23 @@ function update() {
                 if (p.mouseX <= 0 || p.mouseX + 72 >= p.w) p.mouseDir *= -1;
                 
                 let mx = p.x + p.mouseX, my = p.y - 35;
-                if (velocityY > 0 && charLeft + 35 > mx + 20 && charLeft + 15 < mx + 50 && charFootY > my && charFootY < my + 30) {
-                    velocityY = -15;
+                if (velocityY > 0 && charLeft + 35 > mx + 25 && charLeft + 15 < mx + 45 && charFootY > my && charFootY < my + 30) {
+                    velocityY = -15; 
                     p.mouseHit = true; p.mouseHitTimer = 30; p.mouseStunTimer = 60;
                 }
             }
         }
-
         // 착지 로직
-        if (velocityY > 0 && charLeft + 40 > p.x && charLeft < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) {
+        if (velocityY > 0 && charLeft + 45 > p.x && charLeft + 5 < p.x + p.w && charFootY >= p.y && charFootY <= p.y + 15) {
             velocityY = PHYSICS.jumpPower;
+            loadRive('kongsik_ingame_land.riv');
+            setTimeout(() => loadRive('kongsik_ingame_air.riv'), 200);
             if (p.isBreakable) p.isBroken = true;
         }
     });
 
-    // 화면 스크롤 및 무한 루프 (생략된 기존 로직과 동일)
-    if (charFootY > 1000) { isPlaying = false; isGameOver = true; document.getElementById('result-screen').style.display = 'flex'; }
-
+    if (charFootY > 1050) { isPlaying = false; isGameOver = true; document.getElementById('res-total').innerText = (score*0.0001).toFixed(2) + "%"; document.getElementById('result-screen').style.display = 'flex'; }
+    
     // 렌더링
     const stage = document.getElementById('game-stage');
     document.querySelectorAll('.platform, .mouse-enemy, .damage-effect').forEach(el => el.remove());
@@ -240,7 +247,7 @@ function update() {
             if (p.hasMouse) {
                 if (p.mouseHit && p.mouseHitTimer > 0) {
                     const eff = document.createElement('div'); eff.className = 'damage-effect';
-                    eff.style.left = (p.x + p.mouseX + 6) + 'px'; eff.style.top = (p.y - 60) + 'px';
+                    eff.style.left = (p.x + p.mouseX + 6) + 'px'; eff.style.top = (p.y - 65) + 'px';
                     stage.appendChild(eff);
                 }
                 const m = document.createElement('div'); m.className = 'mouse-enemy';
